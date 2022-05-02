@@ -1,0 +1,143 @@
+---
+title: "FCA and the GDSTM"
+output:
+  html_document:
+    df_print: paged
+---
+
+Testing the options of the GDSTMDecorrelation FRESA.CAD function
+
+I'll use FRESA.CAD and mlbench
+
+```{r functions,echo = TRUE }
+library("FRESA.CAD")
+library(mlbench)
+
+op <- par(no.readonly = TRUE)
+
+```
+
+I'll load the vehicle data set
+
+```{r}
+data("Vehicle", package = "mlbench")
+print(table(Vehicle$Class))
+```
+
+Setting some variables for downstream analysis
+
+```{r}
+studyName = "Vehicle"
+datasetframe <- Vehicle
+Outcome <- "Class"
+
+trainFraction=0.50
+correlationThreshold=0.8
+featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
+
+```
+
+Setting the Training and testing sets
+
+```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+tb <- table(datasetframe[,Outcome])
+classNames <- unique(datasetframe[,Outcome])
+
+allrowClass <- datasetframe[,Outcome]
+names(allrowClass) <- rownames(datasetframe)
+
+trainsize <- trainFraction*min(tb);
+trainSamples <- NULL;
+for (theClass in classNames)
+{
+  classSample <- allrowClass[allrowClass == theClass]
+  trainSamples <- c(trainSamples,names(classSample[sample(length(classSample),trainsize)]))
+}
+
+
+datasetframe_train <- datasetframe[trainSamples,]
+testSamples <- !(rownames(datasetframe) %in% trainSamples)
+datasetframe_test <- datasetframe[testSamples,]
+
+outcomes <- datasetframe_train[,Outcome]
+
+pander::pander(table(datasetframe[,Outcome]),caption="All")
+pander::pander(table(datasetframe_train[,Outcome]),caption="Training")
+pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
+
+
+```
+
+Decorrelation default
+
+```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train))
+
+baseF <- attr(datasetframeDecor,"AbaseFeatures")
+pander::pander(baseF)
+
+
+```
+
+Train a simple LDA model
+
+```{r}
+mLDARaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=MASS::lda,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
+                   )
+
+pander::pander(length(mLDARaw$selectedfeatures))
+
+```
+
+Using the decorrelated data
+
+```{r}
+mlLDADecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframeDecor,
+                    fitmethod=MASS::lda,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
+                   )
+
+pander::pander(length(mlLDADecor$selectedfeatures))
+
+
+
+```
+
+Side by side comparison of predictions
+
+```{r}
+
+# Predict the raw testing set
+prRAW <- predict(mLDARaw,datasetframe_test)
+
+
+# Transform the testing set
+decor_test <- predictDecorrelate(datasetframeDecor,datasetframe_test)
+# Predict the transformed dataset
+prDecor <- predict(mlLDADecor,decor_test)
+
+
+par(mfrow=c(1,2))
+for (theClass in classNames)
+{
+  classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
+  psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW[,theClass]),
+                                paste("Raw :",theClass),cex=0.75)
+  psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+                                paste("GDSTM :",theClass),cex=0.75)
+  pander::pander(psRaw$aucs)
+  pander::pander(psDecor$aucs)
+}
+
+
+```
+
