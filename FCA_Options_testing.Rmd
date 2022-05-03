@@ -1,8 +1,5 @@
 ---
 title: "FCA and the GDSTM"
-output:
-  html_document:
-    df_print: paged
 ---
 
 Testing the options of the GDSTMDecorrelation FRESA.CAD function
@@ -75,9 +72,36 @@ Decorrelation default
 
 
 system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train))
-
 baseF <- attr(datasetframeDecor,"AbaseFeatures")
 pander::pander(baseF)
+
+# With Supervised Basis
+
+# system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome))
+# baseF <- attr(datasetframeDecor,"baseFeatures")
+# pander::pander(baseF)
+
+
+```
+
+With options
+
+```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,type="RLM",method="pearson"))
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,method="spearman"))
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,type="RLM",method="spearman"))
+
+#baseF <- attr(datasetframeDecor,"AbaseFeatures")
+#pander::pander(baseF)
+
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,type="RLM",method="pearson"))
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,method="spearman"))
+system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,type="RLM",method="spearman"))
+#baseF <- attr(datasetframeDecor,"baseFeatures")
+#pander::pander(baseF)
 
 
 ```
@@ -140,4 +164,3 @@ for (theClass in classNames)
 
 
 ```
-
