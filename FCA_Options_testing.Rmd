@@ -1,10 +1,13 @@
 ---
 title: "FCA and the GDSTM"
+output: html_notebook
 ---
 
-Testing the options of the GDSTMDecorrelation FRESA.CAD function
+## GDSTM Decorrelation
 
-I'll use FRESA.CAD and mlbench
+This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FCA**) algorithm.
+
+This scrip uses FRESA.CAD and mlbench R packages:
 
 ```{r functions,echo = TRUE }
 library("FRESA.CAD")
@@ -29,12 +32,12 @@ datasetframe <- Vehicle
 Outcome <- "Class"
 
 trainFraction=0.50
-correlationThreshold=0.8
+correlationThreshold=0.7
 featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
 ```
 
-Setting the Training and testing sets
+Setting the Training and Testing sets
 
 ```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
@@ -66,49 +69,195 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ```
 
-Decorrelation default
+## FCA with default parameters
+
+The default parameters will compute the transformation matrix with a maximum correlation goal of 0.8 using fast matrix multiplication with Pearson correlation and linear models estimation.
+
+Default Parameters: thr=0.80,method="fast",type="LM"
 
 ```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
 system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train))
-baseF <- attr(datasetframeDecor,"AbaseFeatures")
-pander::pander(baseF)
 
-# With Supervised Basis
-
-# system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome))
-# baseF <- attr(datasetframeDecor,"baseFeatures")
-# pander::pander(baseF)
 
 
 ```
 
-With options
+## FCA with Options
+
+The following commented lines of code runs the function selecting some of the possible options:
 
 ```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,type="RLM",method="pearson"))
-#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,method="spearman"))
-#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,type="RLM",method="spearman"))
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold))
 
-#baseF <- attr(datasetframeDecor,"AbaseFeatures")
-#pander::pander(baseF)
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,type="RLM",method="pearson"))
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,type="LM",method="spearman"))
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,type="RLM",method="spearman"))
 
 
-#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,type="RLM",method="pearson"))
-#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,method="spearman"))
-system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,Outcome=Outcome,type="RLM",method="spearman"))
-#baseF <- attr(datasetframeDecor,"baseFeatures")
-#pander::pander(baseF)
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,Outcome=Outcome))
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,Outcome=Outcome,type="RLM",method="pearson"))
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,Outcome=Outcome,type="LM",method="spearman"))
+
+#system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train,thr = correlationThreshold,Outcome=Outcome,type="RLM",method="spearman"))
 
 
 ```
 
-Train a simple LDA model
+The **GDSTMDecorrelation** function returns a data frame with the following column names:
 
-```{r}
+The output features after transformation will be named after the original names and:
+
+-   The name will be unaltered if their maximum correlation to other features was lower than the threshold.
+
+-   The name will have the "Ba\_" prefix is the feature was correlated but used as unaltered basis
+
+-   The name will have the "De\_" prefix is the feature was original correlated and its correlation to "Ba\_" features has been removed.
+
+Furthermore, the returned data frame will have the following attributes:
+
+1)  Transformation matrix: "*GDSTM*"
+
+2)  Features:
+
+    1.  "*fsocre*"
+
+    2.  "*varincluded*"
+
+    3.  "*topFeatures*"
+
+3)  Unaltered Basis:
+
+    1.  "*baseFeatures*"
+
+        1.  "*correlatedToBase*"
+
+    2.  "*AbaseFeatures*"
+
+### GDSTM
+
+The **GDSTM** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the threshold
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+## The Spatial Transformation Matrix:
+GDSTM <- attr(datasetframeDecor,"GDSTM")
+
+## The heatmap of the matrix
+gplots::heatmap.2(1*(abs(GDSTM) > 0),
+                  trace = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(2)),
+                  main = paste("GDSTM Matrix:",studyName),
+                  cexRow = 0.5,
+                  cexCol = 0.5,
+                  breaks = c(0,0.5,1),
+                  key.title=NA,
+                  key.xlab="|beta| > 0",
+                  xlab="Feature", ylab="GDSTM Feature")
+
+pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
+
+```
+
+### Features analysis of the FCA algorithm
+
+The **FCA** analysis of the data features are stored in three attributes: "*varincluded*", "*topFeatures*", and "*fscore*".
+
+-   "varincluded" returns the list of continuous features that were decorrelated
+
+-   "topFeatures" returns the features that at some point were used as independent variables inside the linear models.
+
+-   "fscore" : returns a named vector with the total feature score, $F_j$, of the analyzed features.
+
+$$
+F_j=∑_{n}(∑_{i∈B^{n}_{j}}|ρ_{i,j}|^2(|ρ_{i,j}|>ρ_{th})-|ρ_{j,B^n_j}|^2),
+$$
+
+where $B^n_j$ is the set of features statistically associated with feature *j* at iteration *n,* $ρ_{i,j}$ is the correlation between features *i,j*, and $ρ_{th}$ is the correlation goal. In other words, the fscore indicates the degree of total association of "independent" features to dependent features.
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+pander::pander(t(attr(datasetframeDecor,"varincluded")),caption="Correlated Features")
+
+pander::pander(t(attr(datasetframeDecor,"topFeatures")),caption="Independent Features")
+
+fscore <- attr(datasetframeDecor,"fscore") 
+fscore <- fscore[order(-fscore)];
+barplot(fscore,las=2,cex.names = 0.6)
+
+```
+
+The FCA algorithm will return for unsupervised basis learning the following attribute: "*AbaseFeatures*"
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+pander::pander(t(attr(datasetframeDecor,"AbaseFeatures")),caption="Set of unaltered features")
+
+
+```
+
+The total set of unaltered features is:
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+atbase <- attr(datasetframeDecor,"AbaseFeatures")
+featnames <- colnames(datasetframe_train)
+included <- attr(datasetframeDecor,"varincluded")
+
+notinvarincluded <-  featnames[!(featnames %in% included)]
+pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features")
+
+```
+
+For supervised basis learning the FCA algorithm will return the following attributes:
+
+-   "*baseFeatures*" and "*correlatedToBase*"
+
+The "*baseFeatures*" is the set of features that the **FRESA.CAD::univariate_correlation()** univariate filter function used to get the features associated with the outcome.
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+# With Supervised Basis
+system.time(
+  datasetframeDecorSup <- GDSTMDecorrelation
+                (
+                  datasetframe_train,
+                  Outcome=Outcome
+                )
+            )
+
+pander::pander(t(attr(datasetframeDecorSup,"baseFeatures")),caption="Set of unaltered features")
+
+
+pander::pander(t(attr(datasetframeDecorSup,"correlatedToBase")),caption="Set of features associated with base")
+
+
+atbaseSup <- attr(datasetframeDecorSup,"baseFeatures")
+included <- attr(datasetframeDecorSup,"varincluded")
+
+notinvarincludedSup <-  featnames[!(featnames %in% included)]
+pander::pander(t(c(atbaseSup,notinvarincludedSup)),caption="Set of unaltered features: Supervised")
+
+pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features: Unsupervised")
+
+
+fscore <- attr(datasetframeDecorSup,"fscore") 
+fscore <- fscore[order(-fscore)];
+barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
+
+```
+
+## Machine Learning and GDSTM
+
+Train a simple LDA model on the raw dataset
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 mLDARaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=MASS::lda,
@@ -120,9 +269,9 @@ pander::pander(length(mLDARaw$selectedfeatures))
 
 ```
 
-Using the decorrelated data
+Now using the decorrelated data
 
-```{r}
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 mlLDADecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor,
                     fitmethod=MASS::lda,
@@ -136,16 +285,23 @@ pander::pander(length(mlLDADecor$selectedfeatures))
 
 ```
 
-Side by side comparison of predictions
+To make predictions we need to transform the testing set. This is done using the **FRESA.CAD::predictDecorrelate()** function
 
-```{r}
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+# Transform the testing set
+decor_test <- predictDecorrelate(datasetframeDecor,datasetframe_test)
+
+```
+
+Once we have the transformed testing dataset we can make a side by side comparison of predictions
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Predict the raw testing set
 prRAW <- predict(mLDARaw,datasetframe_test)
 
 
-# Transform the testing set
-decor_test <- predictDecorrelate(datasetframeDecor,datasetframe_test)
 # Predict the transformed dataset
 prDecor <- predict(mlLDADecor,decor_test)
 
