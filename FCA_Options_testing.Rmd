@@ -79,9 +79,10 @@ Default Parameters: thr=0.80,method="fast",type="LM"
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-
-system.time(datasetframeDecor <- GDSTMDecorrelation(datasetframe_train))
-
+datasetframeDecor<-list();
+decortype <- list();
+system.time(datasetframeDecor[[1]] <- GDSTMDecorrelation(datasetframe_train))
+decortype[[1]] <- "Default"
 
 
 ```
@@ -95,70 +96,96 @@ The following code runs the function and selecting some of the possible options:
 
 # Change the maximum correlation goal
 
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[2]] <- "AtThr"
+system.time(datasetframeDecor[[2]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold
-  )
+  ))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[3]] <- "Robust_Pearson"
+system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   type="RLM",
-  method="pearson")
+  method="pearson"))
 
 
 # Change the maximum correlation goal, and change to Spearman correlation
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[4]] <- "LM_Spearman"
+system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   type="LM",
-  method="spearman")
+  method="spearman"))
 
 # Change the maximum correlation goal, and set Spearman correlation with robust liner model
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[5]] <- "RLM_Spearman"
+system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   type="RLM",
-  method="spearman")
+  method="spearman"))
 
 
 # The following are for supervised basis learning
 
 # Set the target class for association learning
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[6]] <- "Sup_Default"
+system.time(datasetframeDecor[[6]] <- GDSTMDecorrelation(
   datasetframe_train,
-  Outcome=Outcome)
+  Outcome=Outcome))
 
 # Change the maximum correlation goal
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[7]] <- "Sup_AtThr"
+system.time(datasetframeDecor[[7]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
-  Outcome=Outcome)
+  Outcome=Outcome))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[8]] <- "Sup_RLM_Pearson"
+system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
-  method="pearson")
+  method="pearson"))
 
 # Change the maximum correlation goal, and change to Spearman correlation
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[9]] <- "Sup_LM_Spearman"
+system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   Outcome=Outcome,
   type="LM",
-  method="spearman")
+  method="spearman"))
 
 # Change the maximum correlation goal, and set to Spearman correlation with robust liner model
-datasetframeDecor <- GDSTMDecorrelation(
+decortype[[10]] <- "Sup_RLM_Spearman"
+system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
-  method="spearman")
+  method="spearman"))
+
+
+# With user defined supervised basis 
+decortype[[11]] <- "Sup_KS_RLM_Spearman"
+baseKS <- names(univariate_KS(datasetframe_train,
+                        Outcome=Outcome,
+                        pvalue=0.20,
+                        limit=0,
+                        thr=correlationThreshold))
+
+system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
+  datasetframe_train,
+  thr = correlationThreshold,
+  Outcome=Outcome,
+  baseFeatures=baseKS,
+  type="RLM",
+  method="spearman"))
 
 
 ```
@@ -195,15 +222,13 @@ Furthermore, the returned data frame will have the following attributes:
 
 ### GDSTM
 
-The **GDSTM** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the threshold
+The "*GDSTM***"** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the threshold
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-## The usupervised decorrelation
-datasetframeDecor <- GDSTMDecorrelation(datasetframe_train)
-                                        
+
 ## The Spatial Transformation Matrix:
-GDSTM <- attr(datasetframeDecor,"GDSTM")
+GDSTM <- attr(datasetframeDecor[[1]],"GDSTM")
 
 ## The heatmap of the matrix
 gplots::heatmap.2(1*(abs(GDSTM) > 0),
@@ -240,15 +265,15 @@ $$
 F_j=F_j-∑_{n}|ρ_{B^n_j,j}|^2),~ \forall j \in Dep
 $$
 
-where $B^n_j$ is the set of features statistically associated with feature *j* at iteration *n,* $ρ_{i,j}$ is the correlation between features *i,j*, and $ρ_{th}$ is the correlation goal, {*Ind, Dep*}are the set of independent and dependent features respectively. In other words, the fscore indicates the degree of total association of "independent" features to dependent features.
+where $B^n_j$ is the set of features statistically associated with feature *j* at iteration *n,* $ρ_{i,j}$ is the correlation between features *i,j*, and $ρ_{th}$ is the correlation goal, ${Ind, Dep}$are the set of independent and dependent features respectively. In other words, the "*fscore"* indicates the degree of total association of "independent" features to dependent features.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-pander::pander(t(attr(datasetframeDecor,"varincluded")),caption="Correlated Features")
+pander::pander(t(attr(datasetframeDecor[[1]],"varincluded")),caption="Correlated Features")
 
-pander::pander(t(attr(datasetframeDecor,"topFeatures")),caption="Independent Features")
+pander::pander(t(attr(datasetframeDecor[[1]],"topFeatures")),caption="Independent Features")
 
-fscore <- attr(datasetframeDecor,"fscore") 
+fscore <- attr(datasetframeDecor[[1]],"fscore") 
 fscore <- fscore[order(-fscore)];
 barplot(fscore,las=2,cex.names = 0.6)
 
@@ -258,7 +283,7 @@ The FCA algorithm will return for unsupervised basis learning the following attr
 
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-pander::pander(t(attr(datasetframeDecor,"AbaseFeatures")),caption="Set of unaltered features")
+pander::pander(t(attr(datasetframeDecor[[1]],"AbaseFeatures")),caption="Set of unaltered features")
 
 
 ```
@@ -267,9 +292,9 @@ The total set of unaltered features is:
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-atbase <- attr(datasetframeDecor,"AbaseFeatures")
+atbase <- attr(datasetframeDecor[[1]],"AbaseFeatures")
 featnames <- colnames(datasetframe_train)
-included <- attr(datasetframeDecor,"varincluded")
+included <- attr(datasetframeDecor[[1]],"varincluded")
 
 notinvarincluded <-  featnames[!(featnames %in% included)]
 pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features")
@@ -284,23 +309,16 @@ The "*baseFeatures*" is the set of features that the **FRESA.CAD::univariate_cor
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 # With Supervised Basis
-system.time(
-  datasetframeDecorSup <- GDSTMDecorrelation
-                (
-                  datasetframe_train,
-                  Outcome=Outcome
-                )
-            )
 
-pander::pander(t(attr(datasetframeDecorSup,"baseFeatures")),caption="Set of unaltered features")
+pander::pander(t(attr(datasetframeDecor[[6]],"baseFeatures")),caption="Set of unaltered features")
 
-if (!is.null(attr(datasetframeDecorSup,"correlatedToBase")))
+if (length(attr(datasetframeDecor[[6]],"correlatedToBase"))>0)
 {
-pander::pander(t(attr(datasetframeDecorSup,"correlatedToBase")),caption="Set of features associated with base")
+pander::pander(t(attr(datasetframeDecor[[6]],"correlatedToBase")),caption="Set of features associated with base")
 }
 
-atbaseSup <- attr(datasetframeDecorSup,"baseFeatures")
-included <- attr(datasetframeDecorSup,"varincluded")
+atbaseSup <- attr(datasetframeDecor[[6]],"baseFeatures")
+included <- attr(datasetframeDecor[[6]],"varincluded")
 
 notinvarincludedSup <-  featnames[!(featnames %in% included)]
 pander::pander(t(c(atbaseSup,notinvarincludedSup)),caption="Set of unaltered features: Supervised")
@@ -308,7 +326,7 @@ pander::pander(t(c(atbaseSup,notinvarincludedSup)),caption="Set of unaltered fea
 pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features: Unsupervised")
 
 
-fscore <- attr(datasetframeDecorSup,"fscore") 
+fscore <- attr(datasetframeDecor[[6]],"fscore") 
 fscore <- fscore[order(-fscore)];
 barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
@@ -316,31 +334,31 @@ barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
 ## Machine Learning and GDSTM
 
-Train a simple LDA model on the raw dataset
+Train a simple NB model on the raw dataset
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-mLDARaw <- filteredFit(paste(Outcome,"~."),
+mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                   fitmethod=MASS::lda,
+                   fitmethod=NAIVE_BAYES,
                      filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     pca=FALSE
                    )
 
-pander::pander(length(mLDARaw$selectedfeatures))
 
 ```
 
 Now using the decorrelated data
 
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
-mlLDADecor <- filteredFit(paste(Outcome,"~."),
-                   datasetframeDecor,
-                    fitmethod=MASS::lda,
+mNBDecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframeDecor[[1]],
+                    fitmethod=NAIVE_BAYES,
                      filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     pca=FALSE
                    )
 
-pander::pander(length(mlLDADecor$selectedfeatures))
 
 
 
@@ -351,7 +369,7 @@ To make predictions we need to transform the testing set. This is done using the
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Transform the testing set
-decor_test <- predictDecorrelate(datasetframeDecor,datasetframe_test)
+decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
 
 ```
 
@@ -360,14 +378,15 @@ Once we have the transformed testing dataset we can make a side by side comparis
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Predict the raw testing set
-prRAW <- predict(mLDARaw,datasetframe_test)
+prRAW <- attr(predict(mNBRaw,datasetframe_test),"prob")
 
 
 # Predict the transformed dataset
-prDecor <- predict(mlLDADecor,decor_test)
+prDecor <- attr(predict(mNBDecor,decor_test),"prob")
 
 
 par(mfrow=c(1,2))
+meanROCAUC <- numeric(3);
 for (theClass in classNames)
 {
   classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
@@ -377,7 +396,54 @@ for (theClass in classNames)
                                 paste("GDSTM :",theClass),cex=0.75)
   pander::pander(psRaw$aucs)
   pander::pander(psDecor$aucs)
+  meanROCAUC <- meanROCAUC + psRaw$aucs;
 }
+meanROCAUC <- meanROCAUC/length(classNames)
 
+```
+
+## Predict All Decorrelations
+
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+AllRocAUC <-meanROCAUC;
+par(mfrow=c(2,2))
+
+for (i in c(1:length(datasetframeDecor)))
+{
+  mNBDecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframeDecor[[i]],
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
+                   )
+
+  decor_test <- predictDecorrelate(datasetframeDecor[[i]],datasetframe_test)
+  prDecor <- attr(predict(mNBDecor,decor_test),"prob")
+  meanROCAUC <- numeric(3);
+  for (theClass in classNames)
+  {
+    classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
+    psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+                                  paste(decortype[[i]],theClass,sep=":"),cex=0.75)
+    meanROCAUC <- meanROCAUC + psDecor$aucs;
+  }
+  meanROCAUC <- meanROCAUC/length(classNames)
+  pander::pander(meanROCAUC)
+  AllRocAUC <- rbind(AllRocAUC,meanROCAUC)
+
+}
+rownames(AllRocAUC) <- c("Raw",unlist(decortype))
+pander::pander(AllRocAUC)
+bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
+                          metricname = "ROCAUC",
+                          thesets = "ROC AUC",
+                          themethod = rownames(AllRocAUC),
+                          main = "ROC AUC",
+                          offsets = c(0.5,1),
+                          scoreDirection = ">",
+                          ho=0.5,
+                          args.legend = list(bg = "white",x="bottomright",inset=c(0.0,0),cex=0.75),
+                          col = terrain.colors(nrow(AllRocAUC))
+                          )
 
 ```
