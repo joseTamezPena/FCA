@@ -236,12 +236,12 @@ gplots::heatmap.2(1*(abs(GDSTM) > 0),
                   mar = c(10,10),
                   col=rev(heat.colors(2)),
                   main = paste("GDSTM Matrix:",studyName),
-                  cexRow = 0.5,
-                  cexCol = 0.5,
+                  cexRow = 0.7,
+                  cexCol = 0.7,
                   breaks = c(0,0.5,1),
                   key.title=NA,
                   key.xlab="|beta| > 0",
-                  xlab="Feature", ylab="GDSTM Feature")
+                  xlab="GDSTM Feature", ylab="Input Feature")
 
 pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
 
