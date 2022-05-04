@@ -33,8 +33,8 @@ studyName = "Vehicle"
 datasetframe <- Vehicle
 Outcome <- "Class"
 
-trainFraction=0.70
-correlationThreshold=0.7
+trainFraction = 0.70
+correlationThreshold = 0.6
 featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
 ```
@@ -84,6 +84,51 @@ decortype <- list();
 system.time(datasetframeDecor[[1]] <- GDSTMDecorrelation(datasetframe_train))
 decortype[[1]] <- "Default"
 
+
+```
+
+We can decorrelate the testing set using the predict function
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
+
+```
+
+## Heat maps of the correlation matrices 
+
+Here are the heat maps of the correlation matrices before and after decorrelation on the testing set
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+featnames <- attr(datasetframeDecor[[1]],"varincluded")
+cormat <- cor(datasetframe_test[,featnames],method="pearson")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = paste("Raw Correlation:",studyName),
+                  cexRow = 0.75,
+                  cexCol = 0.75,
+                  key.title=NA,
+                  key.xlab="Correlation",
+                  xlab="Feature", ylab="Feature")
+
+
+featnames <- colnames(attr(datasetframeDecor[[1]],"GDSTM"))
+cormat <- cor(decor_test[,featnames],method="pearson")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = paste("After decorrelation:",studyName),
+                  cexRow = 0.75,
+                  cexCol = 0.75,
+                  key.title=NA,
+                  key.xlab="Correlation",
+                  xlab="Transformed Feature", ylab="Transformed Feature")
 
 ```
 
