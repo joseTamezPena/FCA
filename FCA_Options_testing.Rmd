@@ -33,7 +33,7 @@ studyName = "Vehicle"
 datasetframe <- Vehicle
 Outcome <- "Class"
 
-trainFraction=0.50
+trainFraction=0.70
 correlationThreshold=0.7
 featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
@@ -103,7 +103,7 @@ system.time(datasetframeDecor[[2]] <- GDSTMDecorrelation(
   ))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
-decortype[[3]] <- "Robust_Pearson"
+decortype[[3]] <- "RLM_Pearson"
 system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
