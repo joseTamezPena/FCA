@@ -379,29 +379,26 @@ barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
 ## Machine Learning and GDSTM
 
-Train a simple NB model on the raw dataset
+Train a simple KNN model on the raw dataset
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-mNBRaw <- filteredFit(paste(Outcome,"~."),
+mKNNRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                   fitmethod=NAIVE_BAYES,
+                   fitmethod=KNN_method,
                      filtermethod=univariate_Wilcoxon,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     pca=FALSE
                    )
-
 
 ```
 
 Now using the decorrelated data
 
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
-mNBDecor <- filteredFit(paste(Outcome,"~."),
+mKNNDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[1]],
-                    fitmethod=NAIVE_BAYES,
+                    fitmethod=KNN_method,
                      filtermethod=univariate_Wilcoxon,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     pca=FALSE
                    )
 
 
@@ -423,11 +420,11 @@ Once we have the transformed testing dataset we can make a side by side comparis
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Predict the raw testing set
-prRAW <- attr(predict(mNBRaw,datasetframe_test),"prob")
+prRAW <- predict(mKNNRaw,datasetframe_test)
 
 
 # Predict the transformed dataset
-prDecor <- attr(predict(mNBDecor,decor_test),"prob")
+prDecor <- predict(mKNNDecor,decor_test)
 
 
 par(mfrow=c(1,2))
@@ -435,9 +432,9 @@ meanROCAUC <- numeric(3);
 for (theClass in classNames)
 {
   classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
-  psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW[,theClass]),
+  psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW == theClass),
                                 paste("Raw :",theClass),cex=0.75)
-  psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+  psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor == theClass),
                                 paste("GDSTM :",theClass),cex=0.75)
   pander::pander(psRaw$aucs)
   pander::pander(psDecor$aucs)
@@ -455,21 +452,20 @@ par(mfrow=c(2,2))
 
 for (i in c(1:length(datasetframeDecor)))
 {
-  mNBDecor <- filteredFit(paste(Outcome,"~."),
+  mKNNDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[i]],
-                    fitmethod=NAIVE_BAYES,
+                    fitmethod=KNN_method,
                      filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     pca=FALSE
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2)
                    )
 
   decor_test <- predictDecorrelate(datasetframeDecor[[i]],datasetframe_test)
-  prDecor <- attr(predict(mNBDecor,decor_test),"prob")
+  prDecor <- predict(mKNNDecor,decor_test)
   meanROCAUC <- numeric(3);
   for (theClass in classNames)
   {
     classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
-    psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+    psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor == theClass),
                                   paste(decortype[[i]],theClass,sep=":"),cex=0.75)
     meanROCAUC <- meanROCAUC + psDecor$aucs;
   }
