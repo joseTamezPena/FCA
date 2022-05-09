@@ -292,6 +292,27 @@ gplots::heatmap.2(1*(abs(GDSTM) > 0),
 
 pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
 
+
+```
+
+### The actual coefficients per each decorrelated feature
+
+The following code extracts the dependence formula coefficients of each new feature to the original features.
+
+```{r}
+
+namecol <- colnames(GDSTM);
+
+for (i in 1:ncol(GDSTM))
+{
+  associ <- abs(GDSTM[,i])>0;
+  if (sum(associ) > 1)
+  {
+    pander::pander(t(GDSTM[associ,i]),caption=namecol[i])
+  }
+}
+
+
 ```
 
 ### Features analysis of the FCA algorithm
@@ -471,7 +492,7 @@ decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
 
 Once we have the transformed testing dataset we can make a side by side comparison of predictions
 
-```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", dpi=600, fig.height= 4.0, fig.width= 12.0}
 
 # Predict the raw testing set
 prRAW <- attr(predict(mNBRaw,datasetframe_test),"prob")
