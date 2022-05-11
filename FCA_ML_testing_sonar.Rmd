@@ -24,6 +24,16 @@ I'll load the Sonar data set
 ```{r}
 data("Sonar", package = "mlbench")
 print(table(Sonar$Class))
+
+#data(PimaIndiansDiabetes)
+#print(table(PimaIndiansDiabetes$diabetes))
+
+#data(Ionosphere)
+#print(table(Ionosphere$Class))
+#Ionosphere$V1 <- NULL
+#Ionosphere$V2 <- NULL
+#boxplot(Ionosphere)
+
 ```
 
 Setting some variables for downstream analysis
@@ -33,7 +43,7 @@ studyName = "Sonar"
 datasetframe <- Sonar
 Outcome <- "Class"
 
-trainFraction = 0.3
+trainFraction = 0.5
 
 ```
 
