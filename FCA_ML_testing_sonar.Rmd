@@ -1,0 +1,264 @@
+---
+title: "FCA and the GDSTM"
+output: html_notebook
+---
+
+## Filtered ML fit and the GDSTM with FRESA.CAD 
+
+Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM
+
+This scrip uses FRESA.CAD and mlbench R packages:
+
+```{r functions,echo = TRUE }
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+
+library("FRESA.CAD")
+library(mlbench)
+
+op <- par(no.readonly = TRUE)
+
+```
+
+I'll load the Sonar data set
+
+```{r}
+data("Sonar", package = "mlbench")
+print(table(Sonar$Class))
+```
+
+Setting some variables for downstream analysis
+
+```{r}
+studyName = "Sonar"
+datasetframe <- Sonar
+Outcome <- "Class"
+
+trainFraction = 0.3
+
+```
+
+Setting the Training and Testing sets
+
+```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+tb <- table(datasetframe[,Outcome])
+classNames <- unique(datasetframe[,Outcome])
+
+allrowClass <- datasetframe[,Outcome]
+names(allrowClass) <- rownames(datasetframe)
+
+trainsize <- trainFraction*min(tb);
+trainSamples <- NULL;
+for (theClass in classNames)
+{
+  classSample <- allrowClass[allrowClass == theClass]
+  trainSamples <- c(trainSamples,names(classSample[sample(length(classSample),trainsize)]))
+}
+
+
+datasetframe_train <- datasetframe[trainSamples,]
+testSamples <- !(rownames(datasetframe) %in% trainSamples)
+datasetframe_test <- datasetframe[testSamples,]
+
+outcomes <- datasetframe_train[,Outcome]
+
+pander::pander(table(datasetframe[,Outcome]),caption="All")
+pander::pander(table(datasetframe_train[,Outcome]),caption="Training")
+pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
+
+
+```
+
+## Machine Learning with the filterfit function
+
+Train a simple NB model on the raw dataset
+
+In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+datasetframe_train[,Outcome] <- 1*(datasetframe_train[,Outcome] == classNames[2])
+datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
+
+mNBRaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     Scale="OrderLogit",
+                     pca=FALSE
+                   )
+
+mKNNRaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=KNN_method,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                   )
+
+
+```
+
+With PCA
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+# With PCA
+mNBPCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     Scale="OrderLogit",
+                     pca=TRUE
+                   )
+
+
+mKNNPCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=KNN_method,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     Scale="OrderLogit",
+                     PCA = TRUE
+                   )
+```
+
+Now we turn FCA decorrelation default
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+mNBDecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     Scale="OrderLogit",
+                     DECOR = TRUE,
+                     pca=FALSE
+                   )
+
+mKNNDecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=KNN_method,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     DECOR = TRUE,
+                   )
+
+
+```
+
+Decorrelation with parameters: Spearman correlation and Robust Fit.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+mNBDecor2 <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     Scale="OrderLogit",
+                     DECOR = TRUE,
+                     DECOR.control=list(method="spearman",type="RLM"),
+                     pca=FALSE
+                   )
+mKNNDecor2 <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=KNN_method,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     DECOR = TRUE,
+                     DECOR.control=list(method="spearman",type="RLM"),
+                   )
+
+
+```
+
+Once we have the transformed testing dataset we can make a side by side comparison of predictions
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+# Predict the raw testing set
+prRAW <- predict(mNBRaw,datasetframe_test)
+
+# Predict with PCA
+prPCA <- predict(mNBPCA,datasetframe_test)
+
+# Predict the transformed dataset
+prDecor <- predict(mNBDecor,datasetframe_test)
+
+# Predict the transformed dataset spearman
+prDecor2 <- predict(mNBDecor2,datasetframe_test)
+
+par(mfrow=c(2,2))
+AllRocAUC <- NULL;
+
+classoutcomes <- datasetframe_test[,Outcome]
+psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW),
+                                "NB Raw",cex=0.75)
+pander::pander(psRaw$aucs)
+AllRocAUC <- rbind(AllRocAUC,psRaw$aucs)
+
+psPCA <- predictionStats_binary(cbind(classoutcomes,prPCA),
+                                "NB PCA",cex=0.75)
+pander::pander(psPCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
+
+psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
+                                "NB GDSTM",cex=0.75)
+pander::pander(psDecor$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
+
+
+psDecor2 <- predictionStats_binary(cbind(classoutcomes,prDecor2),
+                                "KN GDSTM Spearman",cex=0.75)
+pander::pander(psDecor2$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
+
+
+psRaw <- predictionStats_binary(cbind(classoutcomes,
+                                      predict(mKNNRaw,datasetframe_test)),
+                                "KNN Raw",cex=0.75)
+pander::pander(psRaw$aucs)
+AllRocAUC <- rbind(AllRocAUC,psRaw$aucs)
+
+psPCA <- predictionStats_binary(cbind(classoutcomes,
+                                      predict(mKNNPCA,datasetframe_test)),
+                                "KNN PCA",cex=0.75)
+pander::pander(psPCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
+
+psDecor <- predictionStats_binary(cbind(classoutcomes,
+                                        predict(mKNNDecor,datasetframe_test)),
+                                "KNN GDSTM",cex=0.75)
+pander::pander(psDecor$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
+
+
+psDecor2 <- predictionStats_binary(cbind(classoutcomes,
+                                         predict(mKNNDecor2,datasetframe_test)),
+                                "KNN GDSTM Spearman",cex=0.75)
+pander::pander(psDecor2$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
+
+```
+
+## Comparing ROCAUC
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTM_S",
+                         "KNN:Raw","KNN:PCA","KNN:GDSTM_P","KNN:GDSTM_S")
+pander::pander(AllRocAUC)
+bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
+                          metricname = "ROCAUC",
+                          thesets = "ROC AUC",
+                          themethod = rownames(AllRocAUC),
+                          main = "ROC AUC",
+                          offsets = c(0.5,1),
+                          scoreDirection = ">",
+                          ho=0.5,
+                          args.legend = list(bg = "white",x="bottomright",inset=c(0.0,0),cex=0.75),
+                          col = terrain.colors(nrow(AllRocAUC))
+                          )
+
+```

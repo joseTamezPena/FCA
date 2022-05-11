@@ -33,7 +33,7 @@ studyName = "Vehicle"
 datasetframe <- Vehicle
 Outcome <- "Class"
 
-trainFraction = 0.50
+trainFraction = 0.250
 correlationThreshold = 0.6
 featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
@@ -78,6 +78,7 @@ The default parameters will compute the transformation matrix with a maximum cor
 Default Parameters: thr=0.80,method="fast",type="LM"
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
 
 datasetframeDecor<-list();
 decortype <- list();
@@ -315,7 +316,7 @@ for (i in 1:ncol(GDSTM))
 
 ```
 
-### Features analysis of the FCA algorithm
+### The Feature Index Score
 
 The **FCA** analysis of the data features are stored in three attributes: "*varincluded*", "*topFeatures*", and "*fscore*".
 

@@ -19,21 +19,28 @@ op <- par(no.readonly = TRUE)
 
 ```
 
-I'll load the Sonar data set
+I'll load the vehicle data set
 
 ```{r}
-data("Sonar", package = "mlbench")
-print(table(Sonar$Class))
+data("Satellite", package = "mlbench")
+print(table(Satellite$classes))
+
+soilnames <- names(table(Satellite$classes))
+ncn <- c("RS","CC","GS","DGS","VS","VDGS")
+names(ncn) <- soilnames
+Satellite$classes <- as.factor(ncn[Satellite$classes])
+print(table(Satellite$classes))
+
 ```
 
 Setting some variables for downstream analysis
 
 ```{r}
-studyName = "Sonar"
-datasetframe <- Sonar
-Outcome <- "Class"
+studyName = "Satellite"
+datasetframe <- Satellite
+Outcome <- "classes"
 
-trainFraction = 0.5
+trainFraction = 0.75
 correlationThreshold = 0.6
 featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
@@ -41,7 +48,7 @@ featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
 Setting the Training and Testing sets
 
-```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r, results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 tb <- table(datasetframe[,Outcome])
 classNames <- unique(datasetframe[,Outcome])
@@ -78,6 +85,7 @@ The default parameters will compute the transformation matrix with a maximum cor
 Default Parameters: thr=0.80,method="fast",type="LM"
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
 
 datasetframeDecor<-list();
 decortype <- list();
@@ -152,7 +160,7 @@ system.time(datasetframeDecor[[2]] <- GDSTMDecorrelation(
 decortype[[3]] <- "RLM_Pearson"
 system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   type="RLM",
   method="pearson"))
 
@@ -161,7 +169,7 @@ system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
 decortype[[4]] <- "LM_Spearman"
 system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   type="LM",
   method="spearman"))
 
@@ -169,7 +177,7 @@ system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
 decortype[[5]] <- "RLM_Spearman"
 system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   type="RLM",
   method="spearman"))
 
@@ -187,14 +195,14 @@ system.time(datasetframeDecor[[6]] <- GDSTMDecorrelation(
 decortype[[7]] <- "Sup_AtThr"
 system.time(datasetframeDecor[[7]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   Outcome=Outcome))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
 decortype[[8]] <- "Sup_RLM_Pearson"
 system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
   method="pearson"))
@@ -203,7 +211,7 @@ system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
 decortype[[9]] <- "Sup_LM_Spearman"
 system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   Outcome=Outcome,
   type="LM",
   method="spearman"))
@@ -212,7 +220,7 @@ system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
 decortype[[10]] <- "Sup_RLM_Spearman"
 system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
   method="spearman"))
@@ -228,7 +236,7 @@ baseKS <- names(univariate_KS(datasetframe_train,
 
 system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
+#  thr = correlationThreshold,
   Outcome=Outcome,
   baseFeatures=baseKS,
   type="RLM",
@@ -292,9 +300,30 @@ gplots::heatmap.2(1*(abs(GDSTM) > 0),
 
 pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
 
+
 ```
 
-### Features analysis of the FCA algorithm
+### The actual coefficients per each decorrelated feature
+
+The following code extracts the dependence formula coefficients of each new feature to the original features.
+
+```{r}
+
+namecol <- colnames(GDSTM);
+
+for (i in 1:ncol(GDSTM))
+{
+  associ <- abs(GDSTM[,i])>0;
+  if (sum(associ) > 1)
+  {
+    pander::pander(t(GDSTM[associ,i]),caption=namecol[i])
+  }
+}
+
+
+```
+
+### The Feature Index Score   
 
 The **FCA** analysis of the data features are stored in three attributes: "*varincluded*", "*topFeatures*", and "*fscore*".
 
@@ -328,7 +357,7 @@ barplot(fscore,las=2,cex.names = 0.6)
 
 The FCA algorithm will return for unsupervised basis learning the following attribute: "*AbaseFeatures*"
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 pander::pander(t(attr(datasetframeDecor[[1]],"AbaseFeatures")),caption="Set of unaltered features")
 
@@ -383,12 +412,7 @@ barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
 Train a simple NB model on the raw dataset
 
-In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
-
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-datasetframe_train[,Outcome] <- 1*(datasetframe_train[,Outcome] == classNames[2])
-
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
@@ -412,9 +436,7 @@ mNBPCA <- filteredFit(paste(Outcome,"~."),
 
 Now using the decorrelated data
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-datasetframeDecor[[1]][,Outcome] <- 1*(datasetframeDecor[[1]][,Outcome] == classNames[2])
-
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[1]],
                     fitmethod=NAIVE_BAYES,
@@ -429,105 +451,61 @@ mNBDecor <- filteredFit(paste(Outcome,"~."),
 
 ```
 
-Selected Raw Feattures
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-vnames <- as.data.frame(cbind(mNBRaw$selectedfeatures,mNBRaw$selectedfeatures))
-dta <- datasetframe_train;
-dta <- FRESAScale(dta,method="OrderLogit")$scaledData
-dta$Class <- as.numeric(dta$Class)
-hm <- heatMaps(variableList=vnames,
-               data=dta,
-               Outcome=Outcome,
-               hCluster="col",
-               srtCol=45,
-               xlab="Raw Features",
-               ylab="Samples"
-               )
-
-```
-
-Selected decorrelated Features
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-vnames <- as.data.frame(cbind(mNBDecor$selectedfeatures,mNBDecor$selectedfeatures))
-dta <- datasetframeDecor[[1]];
-dta <- FRESAScale(dta,method="OrderLogit")$scaledData
-dta$Class <- as.numeric(dta$Class)
-hm <- heatMaps(variableList=vnames,
-               data=dta,
-               Outcome=Outcome,
-               hCluster="col",
-               srtCol=35,
-               xlab="Decorrelated Features",
-               ylab="Samples"
-               )
-
-```
-
 To make predictions we need to transform the testing set. This is done using the **FRESA.CAD::predictDecorrelate()** function
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Transform the testing set
-
-datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
-
 decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
 
 ```
 
 Once we have the transformed testing dataset we can make a side by side comparison of predictions
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 8.0}
+```{r results = "asis", dpi=600, fig.height= 4.0, fig.width= 12.0}
 
 # Predict the raw testing set
-prRAW <- predict(mNBRaw,datasetframe_test)
+prRAW <- attr(predict(mNBRaw,datasetframe_test),"prob")
 
 # Predict with PCA
-prPCA <- predict(mNBPCA,datasetframe_test)
+prPCA <- attr(predict(mNBPCA,datasetframe_test),"prob")
 
 # Predict the transformed dataset
-prDecor <- predict(mNBDecor,decor_test)
+prDecor <- attr(predict(mNBDecor,decor_test),"prob")
 
 
 par(mfrow=c(1,3))
 meanROCAUC <- numeric(3);
 meanPCAROCAUC <- numeric(3);
+for (theClass in classNames)
 {
-  classoutcomes <- datasetframe_test[,Outcome]
-  psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW),
-                                "Raw",cex=0.75)
+  classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
+  psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW[,theClass]),
+                                paste("Raw :",theClass),cex=0.75)
   pander::pander(psRaw$aucs)
-  psPCA <- predictionStats_binary(cbind(classoutcomes,prPCA),
-                                "PCA :",cex=0.75)
+  psPCA <- predictionStats_binary(cbind(classoutcomes,prPCA[,theClass]),
+                                paste("PCA :",theClass),cex=0.75)
   pander::pander(psPCA$aucs)
-  psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
-                                "GDSTM :",cex=0.75)
+  psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+                                paste("GDSTM :",theClass),cex=0.75)
   pander::pander(psDecor$aucs)
   meanROCAUC <- meanROCAUC + psRaw$aucs;
   meanPCAROCAUC <- meanPCAROCAUC + psPCA$aucs;
 }
-meanROCAUC <- meanROCAUC
+meanROCAUC <- meanROCAUC/length(classNames)
 AllRocAUC <- meanROCAUC;
-meanPCAROCAUC <- meanPCAROCAUC
+meanPCAROCAUC <- meanPCAROCAUC/length(classNames)
 AllRocAUC <- rbind(AllRocAUC,meanPCAROCAUC);
 
 ```
 
 ## Predict All Decorrelations
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 par(mfrow=c(2,2))
 
 for (i in c(1:length(datasetframeDecor)))
 {
-  if (i > 1)
-  {
-     datasetframeDecor[[i]][,Outcome] <- 1*(datasetframeDecor[[i]][,Outcome] == classNames[2])
-  }
   mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[i]],
                     fitmethod=NAIVE_BAYES,
@@ -538,18 +516,20 @@ for (i in c(1:length(datasetframeDecor)))
                    )
 
   decor_test <- predictDecorrelate(datasetframeDecor[[i]],datasetframe_test)
-  prDecor <- predict(mNBDecor,decor_test)
+  prDecor <- attr(predict(mNBDecor,decor_test),"prob")
   meanROCAUC <- numeric(3);
-  
-    classoutcomes <- datasetframe_test[,Outcome]
-    psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
-                                  decortype[[i]],cex=0.75)
+  for (theClass in classNames)
+  {
+    classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
+    psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
+                                  paste(decortype[[i]],theClass,sep=":"),cex=0.75)
     meanROCAUC <- meanROCAUC + psDecor$aucs;
-  meanROCAUC <- meanROCAUC
+  }
+  meanROCAUC <- meanROCAUC/length(classNames)
   pander::pander(meanROCAUC)
   AllRocAUC <- rbind(AllRocAUC,meanROCAUC)
-}
 
+}
 rownames(AllRocAUC) <- c("Raw","PCA",unlist(decortype))
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
