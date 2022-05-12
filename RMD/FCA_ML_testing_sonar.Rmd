@@ -25,15 +25,6 @@ I'll load the Sonar data set
 data("Sonar", package = "mlbench")
 print(table(Sonar$Class))
 
-#data(PimaIndiansDiabetes)
-#print(table(PimaIndiansDiabetes$diabetes))
-
-#data(Ionosphere)
-#print(table(Ionosphere$Class))
-#Ionosphere$V1 <- NULL
-#Ionosphere$V2 <- NULL
-#boxplot(Ionosphere)
-
 ```
 
 Setting some variables for downstream analysis
@@ -81,7 +72,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ## Machine Learning with the filterfit() function
 
-Train a simple NB model on the raw dataset
+Train a simple NB and KNN model on the datasets
 
 In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
 
@@ -130,7 +121,7 @@ mKNNPCA <- filteredFit(paste(Outcome,"~."),
                    )
 ```
 
-Now we turn FCA decorrelation default
+Now we run filteredFit with the decorrelation and default parameters
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
