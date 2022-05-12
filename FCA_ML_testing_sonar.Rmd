@@ -3,7 +3,7 @@ title: "FCA and the GDSTM"
 output: html_notebook
 ---
 
-## Filtered ML fit and the GDSTM with FRESA.CAD 
+## Filtered ML fit and the GDSTM with FRESA.CAD
 
 Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM
 
@@ -79,7 +79,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ```
 
-## Machine Learning with the filterfit function
+## Machine Learning with the filterfit() function
 
 Train a simple NB model on the raw dataset
 
@@ -93,16 +93,15 @@ datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     Scale="OrderLogit",
                      pca=FALSE
                    )
 
 mKNNRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=KNN_method,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0),
                    )
 
@@ -116,9 +115,8 @@ With PCA
 mNBPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     Scale="OrderLogit",
                      pca=TRUE
                    )
 
@@ -126,9 +124,8 @@ mNBPCA <- filteredFit(paste(Outcome,"~."),
 mKNNPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=KNN_method,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0),
-                     Scale="OrderLogit",
                      PCA = TRUE
                    )
 ```
@@ -140,9 +137,8 @@ Now we turn FCA decorrelation default
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     Scale="OrderLogit",
                      DECOR = TRUE,
                      pca=FALSE
                    )
@@ -150,7 +146,7 @@ mNBDecor <- filteredFit(paste(Outcome,"~."),
 mKNNDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=KNN_method,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0),
                      DECOR = TRUE,
                    )
@@ -164,9 +160,8 @@ Decorrelation with parameters: Spearman correlation and Robust Fit.
 mNBDecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0.2),
-                     Scale="OrderLogit",
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
                      pca=FALSE
@@ -174,7 +169,7 @@ mNBDecor2 <- filteredFit(paste(Outcome,"~."),
 mKNNDecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=KNN_method,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05,limit= 0),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),

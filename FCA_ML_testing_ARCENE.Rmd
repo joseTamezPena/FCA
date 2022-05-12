@@ -1,0 +1,147 @@
+---
+title: "Filtered Fit: FCA and the GDSTM"
+output: html_notebook
+---
+
+## Filtered ML fit and the GDSTM with FRESA.CAD
+
+Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM on the ARCENE data set.
+
+> Isabelle Guyon, Steve R. Gunn, Asa Ben-Hur, Gideon Dror, 2004. Result analysis of the NIPS 2003 feature selection challenge. In: NIPS. [\[Web Link\]](http://books.nips.cc/papers/files/nips17/NIPS2004_0194.pdf).
+> *from: <https://archive.ics.uci.edu/ml/datasets/Arcene>*
+>
+> *a. Original owners\
+> The data were obtained from two sources: The National Cancer Institute (NCI) and the Eastern Virginia Medical School (EVMS). All the data consist of mass-spectra obtained with the SELDI technique. The samples include patients with cancer (ovarian or prostate cancer), and healthy or control patients.\
+> \
+> b. Donor of database\
+> This version of the database was prepared for the NIPS 2003 variable and feature selection benchmark by Isabelle Guyon, 955 Creston Road, Berkeley, CA 94708, USA ([isabelle **'\@'** clopinet.com]{.ul}).*
+
+This scrip uses FRESA.CAD and mlbench R packages:
+
+```{r functions,echo = TRUE }
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+
+library("FRESA.CAD")
+library(mlbench)
+
+op <- par(no.readonly = TRUE)
+
+```
+
+I'll load the Sonar data set
+
+```{r}
+trainLabeled <- read.delim("~/GitHub/FCA/Data/trainSet.txt")
+validLabeled <- read.delim("~/GitHub/FCA/Data/arcene_valid.txt")
+wholeArceneSet <- rbind(trainLabeled,validLabeled)
+
+
+wholeArceneSet$Labels <-  1*(wholeArceneSet$Labels > 0)
+wholeArceneSet[,1:ncol(trainLabeled)] <- sapply(wholeArceneSet,as.double)
+
+table(wholeArceneSet$Labels)
+
+```
+
+Setting some variables for downstream analysis
+
+```{r}
+studyName = "Arcene"
+datasetframe <- wholeArceneSet
+Outcome <- "Labels"
+
+trainFraction = 0.5
+
+```
+
+Setting the Training and Testing sets
+
+```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+tb <- table(datasetframe[,Outcome])
+classNames <- unique(datasetframe[,Outcome])
+
+allrowClass <- datasetframe[,Outcome]
+names(allrowClass) <- rownames(datasetframe)
+
+trainsize <- trainFraction*min(tb);
+trainSamples <- NULL;
+for (theClass in classNames)
+{
+  classSample <- allrowClass[allrowClass == theClass]
+  trainSamples <- c(trainSamples,names(classSample[sample(length(classSample),trainsize)]))
+}
+
+
+datasetframe_train <- datasetframe[trainSamples,]
+testSamples <- !(rownames(datasetframe) %in% trainSamples)
+datasetframe_test <- datasetframe[testSamples,]
+
+outcomes <- datasetframe_train[,Outcome]
+
+pander::pander(table(datasetframe[,Outcome]),caption="All")
+pander::pander(table(datasetframe_train[,Outcome]),caption="Training")
+pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
+
+
+```
+
+## Machine Learning with the filterfit() function
+
+Train a simple NB model on the raw dataset
+
+In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+mLASSORaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= -1),
+                    family = "binomial"
+                   )
+
+
+```
+
+Now we turn **filterfit**() with decorrelation
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+mLASSODecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.05,limit= -1),
+                     DECOR = TRUE,
+                     family = "binomial"
+                   )
+
+
+```
+
+Once we have the transformed testing dataset we can make a side by side comparison of predictions
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+par(mfrow=c(1,2))
+
+
+psRaw <- predictionStats_binary(cbind(datasetframe_test$Labels,
+                                      predict(mLASSORaw,datasetframe_test)),
+                                "LASSO Raw",cex=0.75)
+pander::pander(psRaw$aucs)
+
+
+psDecor <- predictionStats_binary(cbind(datasetframe_test$Labels,
+                                        predict(mLASSODecor,datasetframe_test)),
+                                "LASSO GDSTM",cex=0.75)
+pander::pander(psDecor$aucs)
+
+
+
+```

@@ -3,11 +3,11 @@ title: "FCA and the GDSTM"
 output: html_notebook
 ---
 
-## GDSTM Decorrelation
+## FCA-Based Decorrelation on Vehicle
 
 This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FCA**) algorithm.
 
-This scrip uses FRESA.CAD and mlbench R packages:
+This demo uses FRESA.CAD and mlbench R packages:
 
 ```{r functions,echo = TRUE }
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
@@ -33,9 +33,11 @@ studyName = "Vehicle"
 datasetframe <- Vehicle
 Outcome <- "Class"
 
-trainFraction = 0.250
+# The fractions of samples to be use in the training set
+trainFraction = 0.5
+
+# The correlation threshold 
 correlationThreshold = 0.6
-featnames <- colnames(datasetframe)[colnames(datasetframe) != Outcome]
 
 ```
 
@@ -71,7 +73,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ```
 
-## FCA with default parameters
+## FCA with Default Parameters
 
 The default parameters will compute the transformation matrix with a maximum correlation goal of 0.8 using fast matrix multiplication with Pearson correlation and linear models estimation.
 
@@ -88,14 +90,16 @@ decortype[[1]] <- "Default"
 
 ```
 
-We can decorrelate the testing set using the predict function
+### Testing Set Decorrelation
+
+To decorrelate the testing set use the **predictDecorrelate()** function
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
 
 ```
 
-## Heat maps of the correlation matrices
+## Heat Maps of the Correlation Matrices
 
 Here are the heat maps of the correlation matrices before and after decorrelation on the testing set
 
@@ -136,7 +140,7 @@ gplots::heatmap.2(abs(cormat),
 
 ## FCA with Options
 
-The following code runs the function and selecting some of the possible options:
+The following code are examples of running **GDSTMDecorrelation()** function with options:
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
@@ -153,7 +157,6 @@ system.time(datasetframeDecor[[2]] <- GDSTMDecorrelation(
 decortype[[3]] <- "RLM_Pearson"
 system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   type="RLM",
   method="pearson"))
 
@@ -162,7 +165,6 @@ system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
 decortype[[4]] <- "LM_Spearman"
 system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   type="LM",
   method="spearman"))
 
@@ -170,7 +172,6 @@ system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
 decortype[[5]] <- "RLM_Spearman"
 system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   type="RLM",
   method="spearman"))
 
@@ -195,7 +196,6 @@ system.time(datasetframeDecor[[7]] <- GDSTMDecorrelation(
 decortype[[8]] <- "Sup_RLM_Pearson"
 system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
   method="pearson"))
@@ -204,7 +204,6 @@ system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
 decortype[[9]] <- "Sup_LM_Spearman"
 system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   Outcome=Outcome,
   type="LM",
   method="spearman"))
@@ -213,7 +212,6 @@ system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
 decortype[[10]] <- "Sup_RLM_Spearman"
 system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   Outcome=Outcome,
   type="RLM",
   method="spearman"))
@@ -229,7 +227,6 @@ baseKS <- names(univariate_KS(datasetframe_train,
 
 system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
   datasetframe_train,
-  thr = correlationThreshold,
   Outcome=Outcome,
   baseFeatures=baseKS,
   type="RLM",
@@ -296,7 +293,7 @@ pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
 
 ```
 
-### The actual coefficients per each decorrelated feature
+### The Coefficients per each Decorrelated Feature
 
 The following code extracts the dependence formula coefficients of each new feature to the original features.
 
@@ -403,14 +400,14 @@ barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
 ## Machine Learning and GDSTM
 
-Train a simple NB model on the raw dataset
+Train a simple NB model on the raw data set
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05),
                      Scale="OrderLogit",
                      pca=FALSE
                    )
@@ -419,22 +416,23 @@ mNBRaw <- filteredFit(paste(Outcome,"~."),
 mNBPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05),
                      Scale="OrderLogit",
-                     pca=TRUE
+                     pca=TRUE,
+                     normalize=FALSE
                    )
 
 ```
 
-Now using the decorrelated data
+Training using the decorrelated data
 
-```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[1]],
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05),
                      Scale="OrderLogit",
                      pca=FALSE
                    )
@@ -444,9 +442,9 @@ mNBDecor <- filteredFit(paste(Outcome,"~."),
 
 ```
 
-Selected Raw Feattures
+Selected Raw Features
 
-```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 vnames <- as.data.frame(cbind(mNBRaw$selectedfeatures,mNBRaw$selectedfeatures))
 dta <- datasetframe_train;
@@ -493,7 +491,7 @@ decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
 
 Once we have the transformed testing dataset we can make a side by side comparison of predictions
 
-```{r results = "asis", dpi=600, fig.height= 4.0, fig.width= 12.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 12.0}
 
 # Predict the raw testing set
 prRAW <- attr(predict(mNBRaw,datasetframe_test),"prob")
@@ -530,9 +528,9 @@ AllRocAUC <- rbind(AllRocAUC,meanPCAROCAUC);
 
 ```
 
-## Predict All Decorrelations
+## Training and Prediction on all Decorrelations Sets
 
-```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 par(mfrow=c(2,2))
 
 for (i in c(1:length(datasetframeDecor)))
@@ -540,8 +538,8 @@ for (i in c(1:length(datasetframeDecor)))
   mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframeDecor[[i]],
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05),
                      Scale="OrderLogit",
                      pca=FALSE
                    )
@@ -561,6 +559,14 @@ for (i in c(1:length(datasetframeDecor)))
   AllRocAUC <- rbind(AllRocAUC,meanROCAUC)
 
 }
+
+```
+
+## Final Plot Comparing the ROC AUC of all Options
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+par(mfrow=c(1,1))
+
 rownames(AllRocAUC) <- c("Raw","PCA",unlist(decortype))
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
