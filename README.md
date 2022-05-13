@@ -12,10 +12,10 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
     -   Output at: <https://rpubs.com/J_Tamez/GDSTMDecorrelation_mfeat>
 
--   **FCA_ML_testing_sonar.Rmd** is an example of how to run *filteredFit()*: (**NB** and **KNN**) with decorrelation on the Sonar dataset
+-   **FCA_ML_testing_sonar.Rmd** is an example of how to run *filteredFit()*: (**NB** and **LASSO**) with decorrelation on the Sonar dataset
 
     -   Output at: <https://rpubs.com/J_Tamez/FilteredFit_Decorrelation>
 
--   **FCA_ML_testing_ARCENE.Rmd** is an example of *filteredFit()* (Logistic **LASSO**) and with decorrelation on the Arcene dataset. (Due to the large dimensions of the ARCENE dataset This script will take several minutes to run)
+-   **FCA_ML_testing_ARCENE.Rmd** is an example of *filteredFit()* (Logistic **LASSO**) and with decorrelation on the Arcene dataset. (Due to the large dimensions of the ARCENE dataset the script will take several minutes to run)
 
     -   output at: <https://rpubs.com/J_Tamez/Arcene_FilteredFit>
