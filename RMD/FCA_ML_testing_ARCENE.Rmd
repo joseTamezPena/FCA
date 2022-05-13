@@ -122,7 +122,7 @@ mLASSODecor <- filteredFit(paste(Outcome,"~."),
 
 ### Predicting the Testinig set
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 5.0, fig.width= 8.0}
 
 
 par(mfrow=c(1,2))
