@@ -5,7 +5,9 @@ output: html_notebook
 
 ## Filtered ML fit and the GDSTM with FRESA.CAD
 
-Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM
+Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM.
+
+Naive-Bayes (NB) and LASSO models are used in this demo.
 
 This scrip uses FRESA.CAD and mlbench R packages:
 
@@ -34,7 +36,7 @@ studyName = "Sonar"
 datasetframe <- Sonar
 Outcome <- "Class"
 
-trainFraction = 0.5
+trainFraction = 0.7
 
 ```
 
@@ -72,7 +74,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ## Machine Learning with the filterfit() function
 
-Train a simple NB and KNN model on the datasets
+Train a simple NB and LASSO model on the datasets
 
 In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
 
@@ -84,16 +86,17 @@ datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= 0),
                      pca=FALSE
                    )
 
-mKNNRaw <- filteredFit(paste(Outcome,"~."),
+mLASSORaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                   fitmethod=KNN_method,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                   fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= -1),
+                    family = "binomial"
                    )
 
 
@@ -106,18 +109,19 @@ With PCA
 mNBPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= 0),
                      pca=TRUE
                    )
 
 
-mKNNPCA <- filteredFit(paste(Outcome,"~."),
+mLASSOPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                   fitmethod=KNN_method,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
-                     PCA = TRUE
+                   fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= -1),
+                     PCA = TRUE,
+                    family = "binomial"
                    )
 ```
 
@@ -128,18 +132,19 @@ Now we run filteredFit with the decorrelation and default parameters
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= 0),
                      DECOR = TRUE,
                      pca=FALSE
                    )
 
-mKNNDecor <- filteredFit(paste(Outcome,"~."),
+mLASSODecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                    fitmethod=KNN_method,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                    fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
+                    family = "binomial"
                    )
 
 
@@ -151,19 +156,20 @@ Decorrelation with parameters: Spearman correlation and Robust Fit.
 mNBDecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= 0),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
                      pca=FALSE
                    )
-mKNNDecor2 <- filteredFit(paste(Outcome,"~."),
+mLASSODecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
-                    fitmethod=KNN_method,
-                     filtermethod=univariate_KS,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                    fitmethod=LASSO_MIN,
+                     filtermethod=univariate_Wilcoxon,
+                     filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
+                    family = "binomial"
                    )
 
 
@@ -212,27 +218,27 @@ AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
 
 psRaw <- predictionStats_binary(cbind(classoutcomes,
-                                      predict(mKNNRaw,datasetframe_test)),
-                                "KNN Raw",cex=0.75)
+                                      predict(mLASSORaw,datasetframe_test)),
+                                "LASSO Raw",cex=0.75)
 pander::pander(psRaw$aucs)
 AllRocAUC <- rbind(AllRocAUC,psRaw$aucs)
 
 psPCA <- predictionStats_binary(cbind(classoutcomes,
-                                      predict(mKNNPCA,datasetframe_test)),
-                                "KNN PCA",cex=0.75)
+                                      predict(mLASSOPCA,datasetframe_test)),
+                                "LASSO PCA",cex=0.75)
 pander::pander(psPCA$aucs)
 AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
 
 psDecor <- predictionStats_binary(cbind(classoutcomes,
-                                        predict(mKNNDecor,datasetframe_test)),
-                                "KNN GDSTM",cex=0.75)
+                                        predict(mLASSODecor,datasetframe_test)),
+                                "LASSO GDSTM",cex=0.75)
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,
-                                         predict(mKNNDecor2,datasetframe_test)),
-                                "KNN GDSTM Spearman",cex=0.75)
+                                         predict(mLASSODecor2,datasetframe_test)),
+                                "LASSO GDSTM Spearman",cex=0.75)
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
@@ -243,7 +249,7 @@ AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTM_S",
-                         "KNN:Raw","KNN:PCA","KNN:GDSTM_P","KNN:GDSTM_S")
+                         "LASSO:Raw","LASSO:PCA","LASSO:GDSTM_P","LASSO:GDSTM_S")
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
                           metricname = "ROCAUC",
@@ -257,4 +263,32 @@ bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
                           col = terrain.colors(nrow(AllRocAUC))
                           )
 
+```
+
+## Visualization of GDSTM 
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+gplots::heatmap.2(mNBDecor$GDSTM,
+                  trace = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(7)),
+                  main = paste("GDSTM Matrix (Pearson, LM):",studyName),
+                  cexRow = 0.7,
+                  cexCol = 0.7,
+                  key.title=NA,
+                  key.xlab="beta",
+                  xlab="GDSTM Feature", ylab="Input Feature")
+
+gplots::heatmap.2(mNBDecor2$GDSTM,
+                  trace = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(7)),
+                  main = paste("GDSTM Matrix (Spearman, RLM):",studyName),
+                  cexRow = 0.7,
+                  cexCol = 0.7,
+                  key.title=NA,
+                  key.xlab="beta",
+                  xlab="GDSTM Feature", ylab="Input Feature")
 ```

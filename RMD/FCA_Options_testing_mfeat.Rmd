@@ -26,7 +26,7 @@ op <- par(no.readonly = TRUE)
 I'll load the mfeat data set
 
 ```{r}
-mfeat <- read.delim("~/GitHub/FCA/Data/mfeat.txt", stringsAsFactors=TRUE)
+mfeat <- read.delim("../Data/mfeat.txt", stringsAsFactors=TRUE)
 mfeat$ID <- NULL
 print(table(mfeat$Class))
 

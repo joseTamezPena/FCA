@@ -30,8 +30,8 @@ op <- par(no.readonly = TRUE)
 Loading the ARCENE data set
 
 ```{r}
-trainLabeled <- read.delim("~/GitHub/FCA/Data/trainSet.txt")
-validLabeled <- read.delim("~/GitHub/FCA/Data/arcene_valid.txt")
+trainLabeled <- read.delim("../Data/trainSet.txt")
+validLabeled <- read.delim("../Data/arcene_valid.txt")
 wholeArceneSet <- rbind(trainLabeled,validLabeled)
 
 
@@ -92,13 +92,13 @@ Train a simple Logistic model with LASSO
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-mLASSORaw <- filteredFit(paste(Outcome,"~."),
+system.time(mLASSORaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=LASSO_MIN,
                      filtermethod=univariate_Wilcoxon,
                      filtermethod.control=list(pvalue=0.05,limit= -1),
                     family = "binomial"
-                   )
+                   ))
 
 
 ```
@@ -108,19 +108,19 @@ Now we run **filterfit**() with decorrelation
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-mLASSODecor <- filteredFit(paste(Outcome,"~."),
+system.time(mLASSODecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=LASSO_MIN,
                      filtermethod=univariate_Wilcoxon,
                      filtermethod.control=list(pvalue=0.05,limit= -1),
                      DECOR = TRUE,
                      family = "binomial"
-                   )
+                   ))
 
 
 ```
 
-### Predicting the Testinig set
+### Predicting the Testinig Set
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 5.0, fig.width= 8.0}
 
