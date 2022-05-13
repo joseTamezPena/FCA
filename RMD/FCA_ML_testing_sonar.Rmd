@@ -90,15 +90,15 @@ datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      pca=FALSE
                    )
 
 mLASSORaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                     family = "binomial"
                    )
@@ -113,8 +113,8 @@ With PCA
 mNBPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      pca=TRUE
                    )
 
@@ -122,7 +122,7 @@ mNBPCA <- filteredFit(paste(Outcome,"~."),
 mLASSOPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      PCA = TRUE,
                     family = "binomial"
@@ -136,8 +136,8 @@ Now we run filteredFit with the decorrelation set to true and default parameters
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      DECOR = TRUE,
                      pca=FALSE
                    )
@@ -145,7 +145,7 @@ mNBDecor <- filteredFit(paste(Outcome,"~."),
 mLASSODecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
                     family = "binomial"
@@ -160,8 +160,8 @@ Decorrelation with parameters: Spearman correlation and Robust Fit.
 mNBDecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
                      pca=FALSE
@@ -169,7 +169,7 @@ mNBDecor2 <- filteredFit(paste(Outcome,"~."),
 mLASSODecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
@@ -302,43 +302,60 @@ gplots::heatmap.2(mNBDecor2$GDSTM,
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
+
+
 dataCV <- datasetframe
 dataCV[,Outcome] <- 1*(dataCV[,Outcome] == classNames[2])
+
 
 cvNBRaw <- randomCV(dataCV,
                 Outcome,
                 fittingFunction= filteredFit,
                 classSamplingType = "Ba",
-                trainFraction = 0.8,
-                repetitions = 50,
+                trainFraction = 0.80,
+                repetitions = 100,
                 fitmethod=NAIVE_BAYES,
                 filtermethod=univariate_KS,
-                filtermethod.control=list(pvalue=0.05,limit= 0),
-#                Scale="OrderLogit",
+                filtermethod.control=list(pvalue=0.01,limit= 0),
                 pca = FALSE
             )
+
+cvNBPCA <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvNBRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=NAIVE_BAYES,
+                filtermethod=univariate_KS,
+                filtermethod.control=list(pvalue=0.01,limit= 0),
+                pca = TRUE
+            )
+
 cvNBDecor <- randomCV(dataCV,
                 Outcome,
                 trainSampleSets= cvNBRaw$trainSamplesSets,
                 fittingFunction= filteredFit,
                 fitmethod=NAIVE_BAYES,
                 filtermethod=univariate_KS,
-                filtermethod.control=list(pvalue=0.05,limit= 0),
-#                Scale="OrderLogit",
+                filtermethod.control=list(pvalue=0.01,limit= 0),
                 DECOR = TRUE,
                 pca = FALSE
             )
+
+
+
 ```
 
 The Aggregated Test Results
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
 
-par(mfrow=c(1,2))
+par(mfrow=c(1,3))
 bpraw <- predictionStats_binary(cvNBRaw$testPredictions,"NB RAW",cex=0.75)
+bpPCA <- predictionStats_binary(cvNBPCA$testPredictions,"NB PCA",cex=0.75)
 bpdecor <- predictionStats_binary(cvNBDecor$testPredictions,"NB GDSTM",cex=0.75)
 
 pander::pander(bpraw$aucs)
+pander::pander(bpPCA$aucs)
 pander::pander(bpdecor$aucs)
 ```
 
@@ -395,15 +412,15 @@ datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
 mNBRaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      pca=FALSE
                    )
 
 mLASSORaw <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                     family = "binomial"
                    )
@@ -418,8 +435,8 @@ With PCA
 mNBPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      pca=TRUE
                    )
 
@@ -427,7 +444,7 @@ mNBPCA <- filteredFit(paste(Outcome,"~."),
 mLASSOPCA <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                    fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      PCA = TRUE,
                     family = "binomial"
@@ -441,8 +458,8 @@ Now we run filteredFit with the decorrelation set to true and default parameters
 mNBDecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      DECOR = TRUE,
                      pca=FALSE
                    )
@@ -450,7 +467,7 @@ mNBDecor <- filteredFit(paste(Outcome,"~."),
 mLASSODecor <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
                     family = "binomial"
@@ -465,8 +482,8 @@ Decorrelation with parameters: Spearman correlation and Robust Fit.
 mNBDecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=NAIVE_BAYES,
-                     filtermethod=univariate_Wilcoxon,
-                     filtermethod.control=list(pvalue=0.05,limit= 0.2),
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
                      pca=FALSE
@@ -474,7 +491,7 @@ mNBDecor2 <- filteredFit(paste(Outcome,"~."),
 mLASSODecor2 <- filteredFit(paste(Outcome,"~."),
                    datasetframe_train,
                     fitmethod=LASSO_MIN,
-                     filtermethod=univariate_Wilcoxon,
+                     filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.20,limit= -1),
                      DECOR = TRUE,
                      DECOR.control=list(method="spearman",type="RLM"),
