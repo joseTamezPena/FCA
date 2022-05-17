@@ -19,3 +19,9 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 -   **FCA_ML_testing_ARCENE.Rmd** is an example of *filteredFit()* (Logistic **LASSO**) and with decorrelation on the Arcene dataset. (Due to the large dimensions of the ARCENE dataset the script will take several minutes to run)
 
     -   output at: <https://rpubs.com/J_Tamez/Arcene_FilteredFit>
+
+-   irisexample.R is a small script showcasing the effect of the FCA algorithm on the iris dataset.
+
+    -   Here an example of the output
+
+<img src="RMD/IRIS_outputs.png" alt="Outputs of the IRIS example" width="1000"/>
