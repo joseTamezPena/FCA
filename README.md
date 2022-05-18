@@ -20,7 +20,7 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
     -   output at: <https://rpubs.com/J_Tamez/Arcene_FilteredFit>
 
--   irisexample.R is a small script showcasing the effect of the FCA algorithm on the iris dataset.
+-   **irisexample.R** showcase the effect of the FCA algorithm on the iris dataset.
 
     -   Here an example of the output
 
