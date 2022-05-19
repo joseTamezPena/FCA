@@ -1,4 +1,7 @@
+
 library("FRESA.CAD")
+
+pdf(file = "GDSTMDecorrelation.IRIS.Example.pdf",width = 8, height = 6)
 
 data('iris')
 
@@ -73,6 +76,7 @@ gplots::heatmap.2(irisPCA$rotation,
 
 
 ## Plots of the original, and the transformed data sets
+
 plot(iris[,features],col=classcolor,main="Raw IRIS")
 
 plot(as.data.frame(irisPCA$x),col=classcolor,main="PCA IRIS")
@@ -85,7 +89,7 @@ featuresDecor <- colnames(irisDecorOutcome[,sapply(irisDecorOutcome,is,"numeric"
 plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Supervised FCA IRIS")
 
 ## Plotting the histograms of the features
-par(mfrow=c(1,3))
+par(mfrow=c(2,3))
 h <- hist(iris$Sepal.Length,main="Raw: Sepal Lenght")
 h <- hist(irisDecor$De_Sepal.Length,main="Unsup_FCA: Sepal Lenght")
 h <- hist(irisDecorOutcome$De_Sepal.Length,main="Sup_FCA: Sepal Lenght")
@@ -188,3 +192,5 @@ boxplot(irisDecorOutcome$Ba_Petal.Width~iris$Species,
         notch=TRUE,
         ylab="Petal Width",
         main="Sup_Decor: Petal Width")
+
+dev.off()
