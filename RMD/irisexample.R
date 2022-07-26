@@ -13,6 +13,19 @@ classcolor <- colors[iris$Species]
 system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25))
 GDSTM <- attr(irisDecor,"GDSTM")
 print(GDSTM)
+write.csv(GDSTM,"unGDSTM.csv")
+
+namecol <- colnames(GDSTM);
+
+for (i in 1:ncol(GDSTM))
+{
+  associ <- abs(GDSTM[,i])>0;
+  if (sum(associ) > 1)
+  {
+    print(namecol[i])
+    print(GDSTM[associ,i])
+  }
+}
 
 ## The heat map of the generated decorrelation matrix
 gplots::heatmap.2(GDSTM,
@@ -35,6 +48,20 @@ gplots::heatmap.2(GDSTM,
 system.time(irisDecorOutcome <- GDSTMDecorrelation(iris,Outcome="Species",thr=0.25))
 GDSTM <- attr(irisDecorOutcome,"GDSTM")
 print(GDSTM)
+write.csv(GDSTM,"SupGDSTM.csv")
+
+namecol <- colnames(GDSTM);
+
+for (i in 1:ncol(GDSTM))
+{
+  associ <- abs(GDSTM[,i])>0;
+  if (sum(associ) > 1)
+  {
+    print(namecol[i])
+    print(GDSTM[associ,i])
+  }
+}
+
 
 ## Heat map of The Decorrelation matrix
 gplots::heatmap.2(GDSTM,
@@ -57,6 +84,8 @@ gplots::heatmap.2(GDSTM,
 features <- colnames(iris[,sapply(iris,is,"numeric")])
 irisPCA <- prcomp(iris[,features]);
 print(irisPCA$rotation)
+write.csv(irisPCA$rotation,"irisPCARotation.csv")
+
 
 ## Heatmap of The PCA Transformation matrix
 gplots::heatmap.2(irisPCA$rotation,
@@ -194,3 +223,5 @@ boxplot(irisDecorOutcome$Ba_Petal.Width~iris$Species,
         main="Sup_Decor: Petal Width")
 
 dev.off()
+
+
