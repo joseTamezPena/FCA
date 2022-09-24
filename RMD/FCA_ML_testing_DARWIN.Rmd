@@ -1,0 +1,433 @@
+---
+title: "FdeCA and the GDSTM"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+## Filtered ML fit and the GDSTM with FRESA.CAD
+
+Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM.
+
+Naive-Bayes (NB) and LASSO models are used in this demo.
+
+This scrip uses FRESA.CAD and mlbench R packages:
+
+```{r functions,echo = TRUE }
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+
+library("FRESA.CAD")
+library(mlbench)
+
+op <- par(no.readonly = TRUE)
+
+```
+
+I'll load the DARWIN data set
+
+```{r}
+DARWIN <- read.csv("~/GitHub/FCA/Data/DARWIN/DARWIN.csv")
+rownames(DARWIN) <- DARWIN$ID
+DARWIN$ID <- NULL
+DARWIN$class <- 1*(DARWIN$class=="P")
+print(table(DARWIN$class))
+
+DARWIN[,1:ncol(DARWIN)] <- sapply(DARWIN,as.numeric)
+
+
+```
+
+```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cormat <- cor(DARWIN,method="spearman")
+
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Raw Correlation",
+                  cexRow = 0.75,
+                  cexCol = 0.75,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+
+```
+
+
+Setting some variables for downstream analysis
+
+```{r}
+studyName = "DARWIN"
+datasetframe <- DARWIN
+Outcome <- "class"
+
+# 50% of subjects for training
+
+trainFraction = 0.75
+
+```
+
+Setting the Training and Testing sets
+
+```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+tb <- table(datasetframe[,Outcome])
+classNames <- unique(datasetframe[,Outcome])
+
+allrowClass <- datasetframe[,Outcome]
+names(allrowClass) <- rownames(datasetframe)
+
+trainsize <- trainFraction*min(tb);
+trainSamples <- NULL;
+for (theClass in classNames)
+{
+  classSample <- allrowClass[allrowClass == theClass]
+  trainSamples <- c(trainSamples,names(classSample[sample(length(classSample),trainsize)]))
+}
+
+
+datasetframe_train <- datasetframe[trainSamples,]
+testSamples <- !(rownames(datasetframe) %in% trainSamples)
+datasetframe_test <- datasetframe[testSamples,]
+
+outcomes <- datasetframe_train[,Outcome]
+
+pander::pander(table(datasetframe[,Outcome]),caption="All")
+pander::pander(table(datasetframe_train[,Outcome]),caption="Training")
+pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
+
+
+```
+
+## Machine Learning with the filteredFit() function
+
+Train a simple NB and LASSO model on the data set
+
+In FRESA.CAD all Binary classification task assume that the outcome is 0 and 1.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+datasetframe_train[,Outcome] <- 1*(datasetframe_train[,Outcome] == classNames[2])
+datasetframe_test[,Outcome] <- 1*(datasetframe_test[,Outcome] == classNames[2])
+
+mNBRaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     pca=FALSE
+                   )
+
+
+mLASSORaw <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=LASSO_MIN,
+                     filtermethod=NULL,
+                    family = "binomial"
+                   )
+
+
+```
+
+With PCA
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+# With PCA
+mNBPCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     pca=TRUE
+                   )
+mNBPCA$filter
+
+mLASSOPCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=LASSO_MIN,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05,limit= -1),
+                    PCA=TRUE,
+                    family = "binomial"
+                   )
+```
+
+With CCA
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+# With CCA
+mNBCCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     WHITE="CCA",
+                    pca=FALSE
+                   )
+
+
+mLASSOCCA <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                   fitmethod=LASSO_MIN,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.05,limit= -1),
+                     WHITE="CCA",
+                    family = "binomial"
+                   )
+
+
+
+```
+
+Now we run filteredFit with the decorrelation set to true and default parameters
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+mNBDecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     DECOR = TRUE,
+                     pca=FALSE
+                   )
+
+mLASSODecor <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=LASSO_MIN,
+                      filtermethod=NULL,
+                     DECOR = TRUE,
+                    family = "binomial"
+                   )
+
+
+```
+
+Decorrelation with parameters: Spearman correlation and Robust Fit.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+mNBDecor2 <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     DECOR = TRUE,
+                     DECOR.control=list(method="spearman",type="RLM"),
+                     pca=FALSE
+                   )
+
+mLASSODecor2 <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=LASSO_MIN,
+                    filtermethod=NULL,
+                    DECOR = TRUE,
+                    DECOR.control=list(method="spearman",type="RLM"),
+                    family = "binomial"
+                   )
+
+
+```
+
+Once we have the transformed testing dataset we can make a side by side comparison of predictions
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+# Predict the raw testing set
+prRAW <- predict(mNBRaw,datasetframe_test)
+
+# Predict with PCA
+prPCA <- predict(mNBPCA,datasetframe_test)
+
+# Predict with CCA
+prCCA <- predict(mNBCCA,datasetframe_test)
+
+# Predict the transformed dataset
+prDecor <- predict(mNBDecor,datasetframe_test)
+
+# Predict the transformed dataset spearman
+prDecor2 <- predict(mNBDecor2,datasetframe_test)
+
+#par(mfrow=c(2,2))
+AllRocAUC <- NULL;
+
+classoutcomes <- datasetframe_test[,Outcome]
+psRaw <- predictionStats_binary(cbind(classoutcomes,prRAW),
+                                "NB Raw",cex=0.75)
+pander::pander(psRaw$aucs)
+AllRocAUC <- rbind(AllRocAUC,psRaw$aucs)
+
+psPCA <- predictionStats_binary(cbind(classoutcomes,prPCA),
+                                "NB PCA",cex=0.75)
+pander::pander(psPCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
+
+psCCA <- predictionStats_binary(cbind(classoutcomes,prCCA),
+                                "NB CCA",cex=0.75)
+pander::pander(psCCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psCCA$aucs)
+
+psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
+                                "NB GDSTM",cex=0.75)
+pander::pander(psDecor$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
+
+
+psDecor2 <- predictionStats_binary(cbind(classoutcomes,prDecor2),
+                                "NB GDSTM Spearman",cex=0.75)
+pander::pander(psDecor2$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
+
+
+psRaw <- predictionStats_binary(cbind(classoutcomes,
+                                      predict(mLASSORaw,datasetframe_test)),
+                                "LASSO Raw",cex=0.75)
+pander::pander(psRaw$aucs)
+AllRocAUC <- rbind(AllRocAUC,psRaw$aucs)
+
+psPCA <- predictionStats_binary(cbind(classoutcomes,
+                                      predict(mLASSOPCA,datasetframe_test)),
+                                "LASSO PCA",cex=0.75)
+pander::pander(psPCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
+
+psCCA <- predictionStats_binary(cbind(classoutcomes,
+                                      predict(mLASSOCCA,datasetframe_test)),
+                                "LASSO CCA",cex=0.75)
+pander::pander(psCCA$aucs)
+AllRocAUC <- rbind(AllRocAUC,psCCA$aucs)
+
+psDecor <- predictionStats_binary(cbind(classoutcomes,
+                                        predict(mLASSODecor,datasetframe_test)),
+                                "LASSO GDSTM",cex=0.75)
+pander::pander(psDecor$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
+
+
+psDecor2 <- predictionStats_binary(cbind(classoutcomes,
+                                         predict(mLASSODecor2,datasetframe_test)),
+                                "LASSO GDSTM Spearman",cex=0.75)
+pander::pander(psDecor2$aucs)
+
+
+
+AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
+
+```
+
+## Comparing ROCAUC
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:CCA","NB:GDSTM_P","NB:GDSTM_S",
+                         "LASSO:Raw","LASSO:PCA","LASSO:CCA","LASSO:GDSTM_P","LASSO:GDSTM_S")
+pander::pander(AllRocAUC)
+bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
+                          metricname = "ROCAUC",
+                          thesets = "ROC AUC",
+                          themethod = rownames(AllRocAUC),
+                          main = "ROC AUC",
+                          offsets = c(0.5,1),
+                          scoreDirection = ">",
+                          ho=0.5,
+                          args.legend = list(bg = "white",x="bottomright",inset=c(0.0,0),cex=0.75),
+                          col = terrain.colors(nrow(AllRocAUC))
+                          )
+
+```
+
+## Repeated Holdout Cross-Validation
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+
+dataCV <- datasetframe
+dataCV[,Outcome] <- 1*(dataCV[,Outcome] == classNames[2])
+
+
+cvBSWiMSRaw <- randomCV(dataCV,
+                Outcome,
+                fittingFunction= filteredFit,
+                classSamplingType = "Ba",
+                trainFraction = 0.80,
+                repetitions = 100,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+#                filtermethod.control=list(pvalue=0.05,limit= -1),
+                loops=0
+)
+
+cvBSWiMSPCA <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+#                filtermethod=univariate_BinEnsemble,
+#                filtermethod.control=list(pvalue=0.05,limit= -1),
+                PCA=TRUE,
+                loops=0
+            )
+
+cvBSWiMSCCA <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+#                filtermethod=univariate_BinEnsemble,
+#                filtermethod.control=list(pvalue=0.05,limit= -1),
+                WHITE="CCA",
+                loops=0
+            )
+
+cvBSWiMSDecor <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+#                filtermethod=univariate_BinEnsemble,
+#                filtermethod.control=list(pvalue=0.05,limit= -1),
+                DECOR = TRUE,
+                loops=0
+            )
+
+
+cvBSWiMSDecorS <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+#                filtermethod=univariate_BinEnsemble,
+#                filtermethod.control=list(pvalue=0.05,limit= -1),
+                DECOR = TRUE,
+                DECOR.control=list(method="spearman",type="RLM"),
+                loops=0
+            )
+
+
+```
+
+The Aggregated Test Results
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 8.0, fig.width= 8.0}
+
+#par(mfrow=c(2,2))
+bpraw <- predictionStats_binary(cvBSWiMSRaw$testPredictions,"BSWiMS RAW",cex=0.75)
+bpPCA <- predictionStats_binary(cvBSWiMSPCA$testPredictions,"BSWiMS PCA",cex=0.75)
+bpCCA <- predictionStats_binary(cvBSWiMSCCA$testPredictions,"BSWiMS CCA",cex=0.75)
+bpdecor <- predictionStats_binary(cvBSWiMSDecor$testPredictions,"BSWiMS GDSTM",cex=0.75)
+bpdecorS <- predictionStats_binary(cvBSWiMSDecorS$testPredictions,"BSWiMS GDSTM",cex=0.75)
+
+pander::pander(bpraw$aucs)
+pander::pander(bpPCA$aucs)
+pander::pander(bpCCA$aucs)
+pander::pander(bpdecor$aucs)
+pander::pander(bpdecorS$aucs)
+```
+
+## 

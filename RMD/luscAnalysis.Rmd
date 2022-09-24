@@ -1,0 +1,88 @@
+---
+title: "LUSC_CCA"
+author: "Jose Tamez"
+date: "2022-09-17"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load whitening library
+library("whitening")
+
+```
+
+```{r}
+data(lusc)
+
+names(lusc)
+
+#luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),log(lusc$methyl+1.0),sex=lusc$sex,packs=lusc$packs,survtime=lusc$survivalTime,status=lusc$censoringStatus))
+
+#luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),log(lusc$methyl+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
+
+luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
+
+rluscdataset <- luscdataset[complete.cases(luscdataset),]
+rluscdataset[,1:ncol(rluscdataset)] <- sapply(rluscdataset,as.numeric)
+
+pander::pander(table(rluscdataset$status))
+
+```
+
+
+```{r}
+cormat <- cor(rluscdataset,method="spearman")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Raw Correlation",
+                  cexRow = 0.75,
+                  cexCol = 0.75,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+
+
+```
+
+```{r}
+nsrluscdataset <- rluscdataset[,!(colnames(rluscdataset) %in% c("survtime"))]
+
+cvSVMRaw <- randomCV(nsrluscdataset,
+                "status",
+                fitmethod=randomForest::randomForest,
+                asFactor = TRUE,
+                fittingFunction= filteredFit,
+                classSamplingType = "LOO",
+                filtermethod=univariate_BinEnsemble,
+                filtermethod.control=list(pvalue=0.20,limit=-1),
+                repetitions = 100,
+)
+
+bpraw <- predictionStats_binary(cvSVMRaw$testPredictions,"SVM RAW",cex=1.0)
+
+cvSVMDeCor <- randomCV(nsrluscdataset,
+                "status",
+                fitmethod=randomForest::randomForest,
+                asFactor = TRUE,
+                fittingFunction= filteredFit,
+                classSamplingType = "LOO",
+                filtermethod=univariate_BinEnsemble,
+                filtermethod.control=list(pvalue=0.20,limit=-1),
+                repetitions = 260,
+                DECOR = TRUE
+)
+
+bpraw <- predictionStats_binary(cvSVMDeCor$testPredictions,"SVM Decor",cex=1.0)
+bpraw$aucs
+```
+

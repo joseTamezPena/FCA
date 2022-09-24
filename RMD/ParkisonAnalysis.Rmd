@@ -1,0 +1,203 @@
+---
+title: "LUSC_CCA"
+author: "Jose Tamez"
+date: "2022-09-17"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+
+```
+
+
+```{r}
+signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
+
+```
+
+## The parkison dataset
+```{r}
+
+pd_speech_features <- as.data.frame(read_excel("Data/pd_speech_features.xlsx",sheet = "pd_speech_features", range = "A2:ACB758"))
+
+
+```
+## The average of the three repetitions
+
+```{r}
+rep1Parkison <- subset(pd_speech_features,RID==1)
+rownames(rep1Parkison) <- rep1Parkison$id
+rep1Parkison$id <- NULL
+rep1Parkison$RID <- NULL
+rep1Parkison[,1:ncol(rep1Parkison)] <- sapply(rep1Parkison,as.numeric)
+
+rep2Parkison <- subset(pd_speech_features,RID==2)
+rownames(rep2Parkison) <- rep2Parkison$id
+rep2Parkison$id <- NULL
+rep2Parkison$RID <- NULL
+rep2Parkison[,1:ncol(rep2Parkison)] <- sapply(rep2Parkison,as.numeric)
+
+rep3Parkison <- subset(pd_speech_features,RID==3)
+rownames(rep3Parkison) <- rep3Parkison$id
+rep3Parkison$id <- NULL
+rep3Parkison$RID <- NULL
+rep3Parkison[,1:ncol(rep3Parkison)] <- sapply(rep3Parkison,as.numeric)
+
+avgParkison <- (rep1Parkison + rep2Parkison + rep3Parkison)/3
+whof <- !(colnames(avgParkison) %in% c("gender","class"));
+avgParkison[,whof] <- signedlog(avgParkison[,whof])
+pander::pander(table(avgParkison$class))
+
+```
+
+## Correlation Matrix
+
+```{r}
+cormat <- cor(avgParkison,method="spearman")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Raw Correlation",
+                  cexRow = 0.75,
+                  cexCol = 0.75,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+
+
+```
+
+```{r}
+
+cvRFRaw <- randomCV(avgParkison,
+                "class",
+                asFactor = TRUE,
+                fittingFunction= filteredFit,
+                classSamplingType = "Au",
+                trainFraction = 0.80,
+                fitmethod=randomForest::randomForest,
+                filtermethod=NULL,
+                repetitions = 100,
+)
+
+bpraw <- predictionStats_binary(cvRFRaw$medianTest,"RF RAW",cex=1.0)
+
+
+cvRFDeCor2 <- randomCV(avgParkison,
+                "class",
+                asFactor = TRUE,
+                fittingFunction= filteredFit,
+                fitmethod=randomForest::randomForest,
+                trainSampleSets= cvRFRaw$trainSamplesSets,
+                filtermethod=NULL,
+                DECOR = TRUE
+)
+
+bpDecor2 <- predictionStats_binary(cvRFDeCor2$medianTest,"RF Decor",cex=1.0)
+
+
+roc.test(bpDecor2$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor)
+
+```
+
+```{r}
+
+bm <- BSWiMS.model(class~.,avgParkison,loops=30,NumberofRepeats =5)
+bpraw <- predictionStats_binary(cbind(avgParkison$class,predict(bm,avgParkison)),"BSWiMS RAW",cex=1.0)
+decorp <- GDSTMDecorrelation(avgParkison,Outcome="class")
+bmd <- BSWiMS.model(class~.,decorp,loops=30,NumberofRepeats =5)
+bpdraw <- predictionStats_binary(cbind(avgParkison$class,predict(bmd,decorp)),"BSWiMS Decor",cex=1.0)
+
+roc.test(bpraw$ROC.analysis$roc.predictor,bpdraw$ROC.analysis$roc.predictor)
+
+cvBWRaw <- randomCV(avgParkison,
+                "class",
+                fittingFunction= filteredFit,
+                trainSampleSets= cvRFRaw$trainSamplesSets,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL
+)
+
+
+bpraw <- predictionStats_binary(cvBWRaw$medianTest,"BSWiMS RAW",cex=1.0)
+
+
+cvBWDeCor2 <- randomCV(avgParkison,
+                "class",
+                fitmethod=BSWiMS.model,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvRFRaw$trainSamplesSets,
+                filtermethod=NULL,
+                DECOR = TRUE
+)
+
+bpDecor2 <- predictionStats_binary(cvBWDeCor2$medianTest,"BSWiMS Decor",cex=1.0)
+
+roc.test(bpDecor2$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor)
+
+
+cvLASSODeCor2 <- randomCV(avgParkison,
+                "class",
+                fitmethod=LASSO_1SE,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvBWRaw$trainSamplesSets,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                family= 'binomial',
+)
+bpDecor2 <- predictionStats_binary(cvLASSODeCor2$medianTest,"LASSO Decor",cex=1.0)
+
+cvLASSORAW <- randomCV(avgParkison,
+                "class",
+                fitmethod=LASSO_1SE,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvBWRaw$trainSamplesSets,
+                filtermethod=NULL,
+                family= 'binomial'
+)
+bpRAW <- predictionStats_binary(cvLASSORAW$medianTest,"LASSO RAW",cex=1.0)
+
+roc.test(bpRAW$ROC.analysis$roc.predictor,bpDecor2$ROC.analysis$roc.predictor)
+
+
+cvBWCCA <- randomCV(avgParkison,
+                "class",
+                fitmethod=BSWiMS.model,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvBWRaw$trainSamplesSets,
+                filtermethod=univariate_BinEnsemble,
+                filtermethod.control=list(pvalue=0.01,limit=-1),
+                WHITE = "CCA",
+                loops=0,
+)
+
+bpCCA <- predictionStats_binary(cvBWCCA$medianTest,"BSWiMS CCA",cex=1.0)
+
+
+cvBWPCA <- randomCV(avgParkison,
+                "class",
+                fitmethod=BSWiMS.model,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvBWRaw$trainSamplesSets,
+                filtermethod=univariate_BinEnsemble,
+                filtermethod.control=list(pvalue=0.01,limit=-1),
+                PCA = TRUE,
+                loops=0,
+)
+
+bpPCA <- predictionStats_binary(cvBWPCA$medianTest,"BSWiMS PCA",cex=1.0)
+
+```
+
+
