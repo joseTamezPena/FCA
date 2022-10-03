@@ -1,0 +1,319 @@
+---
+title: "Decorrlation-Based Feature Discovery"
+author: "Jose Tamez"
+date: "2022-10-02"
+output:
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+  html_document: default
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Effect of GDSTM based decorrelation of feature discovery
+
+Here we showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorralate highly correlated features. The aim is to discover features hidden between the highly correlated features.
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+op <- par(no.readonly = TRUE)
+
+```
+
+## Material and Methods
+
+### Signed Log Transform
+
+The function will be used to transform all the continuous features of the data
+
+```{r}
+signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
+
+```
+
+## 
+
+## Data: The Parkinson data-set
+
+The data to process is described in:
+
+Erdogdu Sakar, Betul, Gorkem Serbes, and C. Okan Sakar. "Analyzing the effectiveness of vocal features in early telediagnosis of Parkinson's disease." *PloS one* 12, no. 8 (2017): e0182428.
+
+The data was obtained from the UCI ML repository:
+
+<https://archive.ics.uci.edu/ml/datasets/Parkinson%27s+Disease+Classification>
+
+```{r}
+
+pd_speech_features <- as.data.frame(read_excel("~/GitHub/FCA/Data/pd_speech_features.xlsx",sheet = "pd_speech_features", range = "A2:ACB758"))
+
+trainFraction=0.65;
+
+```
+
+### The average of the three repetitions
+
+Each subject had three observations, here I'll use the average of the three experiments per subject.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+rep1Parkison <- subset(pd_speech_features,RID==1)
+rownames(rep1Parkison) <- rep1Parkison$id
+rep1Parkison$id <- NULL
+rep1Parkison$RID <- NULL
+rep1Parkison[,1:ncol(rep1Parkison)] <- sapply(rep1Parkison,as.numeric)
+
+rep2Parkison <- subset(pd_speech_features,RID==2)
+rownames(rep2Parkison) <- rep2Parkison$id
+rep2Parkison$id <- NULL
+rep2Parkison$RID <- NULL
+rep2Parkison[,1:ncol(rep2Parkison)] <- sapply(rep2Parkison,as.numeric)
+
+rep3Parkison <- subset(pd_speech_features,RID==3)
+rownames(rep3Parkison) <- rep3Parkison$id
+rep3Parkison$id <- NULL
+rep3Parkison$RID <- NULL
+rep3Parkison[,1:ncol(rep3Parkison)] <- sapply(rep3Parkison,as.numeric)
+
+whof <- !(colnames(rep1Parkison) %in% c("gender","class"));
+avgParkison <- rep1Parkison;
+avgParkison[,whof] <- (rep1Parkison[,whof] + rep2Parkison[,whof] + rep3Parkison[,whof])/3
+avgParkison[,whof] <- signedlog(avgParkison[,whof])
+pander::pander(table(avgParkison$class))
+
+```
+
+### Correlation Matrix of the Parkinson Data
+
+The heat-map of the correlation:
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cormat <- cor(avgParkison,method="spearman")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Raw Correlation",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature",
+#                  srtRow = 45,
+#                  srtCol = 45
+)
+
+
+
+```
+
+### Training and testing set
+
+We divided the data into training and testing sets.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+set.seed(2)
+caseSet <- subset(avgParkison, class == 1)
+controlSet <- subset(avgParkison, class == 0)
+caseTrainSize <- nrow(caseSet)*trainFraction;
+controlTrainSize <- nrow(controlSet)*trainFraction;
+sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
+sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
+trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
+testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
+pander::pander(table(trainSet$class))
+pander::pander(table(testSet$class))
+
+
+```
+
+#### Decorrelation of train and test set creation
+
+I compute a decorrelated version of the training and testing sets using the GDSTMDecorrelation function of FRESA.CAD
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
+deTest <- predictDecorrelate(deTrain,testSet)
+
+```
+
+#### Correlation Matrix of the Decorrelated Test Data
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cormat <- cor(deTest,method="spearman")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Test Set Correlation after GDSTM",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+```
+
+### Cross Validation
+
+Before doing the feature analysis. I'll explore BSWiMS modeling using the Holdout cross validation method of FRESA.CAD. The purpose of the cross-validation is to observe and estimate the performance gain of decorrelation.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,2))
+
+## The Raw validation
+cvBSWiMSRaw <- randomCV(avgParkison,
+                "class",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "Pro",
+                trainFraction = trainFraction,
+                repetitions = 150
+)
+
+bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.80)
+
+## The validation with Decorrelation
+cvBSWiMSDeCor <- randomCV(avgParkison,
+                "class",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(Outcome="class",thr=0.8)
+)
+
+bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Decor",cex=0.80)
+
+### Here we compute the probability that the decorrelation ROC is superrior to the RAW ROC. 
+pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
+par(op)
+
+```
+
+## The Raw Model vs the Decorrelated-Based Model
+
+After demonstrating that decorrelation is able to improve BSWiMS model performance, I'll focus is showcasing the ability to discover new features associated with the outcome.
+
+First, I'll compute the BSWiMS models for the original data, and for the decorrelated data-set. The model estimation will be done using the training set and tested on the holdout test set, and repeated 10 times. After that, I'll compare the statistical difference of both ROC curves.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,2))
+
+bm <- BSWiMS.model(class~.,trainSet,NumberofRepeats = 10)
+bpraw <- predictionStats_binary(cbind(testSet$class,predict(bm,testSet)),"BSWiMS RAW",cex=0.75)
+
+bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 10)
+bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"BSWiMS Decor",cex=0.75)
+
+pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecor$ROC.analysis$roc.predictor))
+
+
+par(op)
+
+```
+
+### Feature Analysis of Both Models
+
+The analysis of the features required to predict the outcome will use the following:
+
+1.  Analysis of the BSWiMS bagged model using the summary function.
+
+2.  Analysis of the sparse GDSMT
+
+3.  Analysis of the univariate association of the model features of both models
+
+4.  Report the new features not found by the Original data analysis
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,1))
+## 1 Get the Model Features
+smOriginal <- summary(bm)
+rawnames <- rownames(smOriginal$coefficients)
+smDecor <- summary(bmd)
+decornames <- rownames(smDecor$coefficients)
+## 2 Get the decorrelation matrix formulas
+dc <- getDerivedCoefficients(deTrain)
+### 2a Get only the ones that were decorrelated by the decorrelation-based model
+deNames_in_dc <- decornames[decornames %in% names(dc)]
+unamedlist <- dc[deNames_in_dc]
+names(unamedlist) <- NULL
+### 2b Get the the names of the orignial features
+allDevar <- unique(c(names(unlist(unamedlist)),decornames))
+allDevar <- allDevar[!str_detect(allDevar,"De_")]
+allDevar <- str_remove(allDevar,"Ba_")
+
+### 2c Get only the new feautres not found in the original analysis
+dvar <- allDevar[!(allDevar %in% rawnames)] 
+
+### 2d Get the decorrelated variables that have new features
+newvars <- character();
+for (cvar in deNames_in_dc)
+{
+  lvar <- dc[cvar]
+  names(lvar) <- NULL
+  lvar <- names(unlist(lvar))
+  if (length(lvar[lvar %in% dvar]) > 0)
+  {
+     newvars <- append(newvars,cvar)
+  }
+}
+
+## 3 Here is the univariate z values of the orignal set
+pander::pander(bm$univariate[dvar,])
+## 4 Here is the univariate z values of the decorrelated set
+pander::pander(bmd$univariate[newvars,])
+
+## 4a The scater plot of the decorrelated vs original Univariate values
+
+zvalueNew <- bmd$univariate[newvars,]
+rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"De_")
+rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"Ba_")
+
+zvaluePrePost <- bm$univariate[rownames(zvalueNew),c(1,3)]
+zvaluePrePost$Name <- NULL
+zvaluePrePost$NewZ <- zvalueNew[rownames(zvaluePrePost),"ZUni"]
+pander::pander(zvaluePrePost)
+plot(zvaluePrePost,
+     xlim=c(-0.5,6.5),
+     ylim=c(0,7),
+     xlab="Original Z",
+     ylab="Decorrelated Z",
+     main="Unviariate IDI Z Values",
+     pch=3,cex=0.5,
+     col="red")
+abline(v=1.96,col="blue")
+abline(h=1.96,col="blue")
+text(zvaluePrePost$ZUni,zvaluePrePost$NewZ,rownames(zvaluePrePost),srt=65,cex=0.75)
+
+
+```
+
+### The Summary of the Decorrelated-based model
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+pander::pander(smDecor$coefficients)
+
+## Let focus on the new features
+
+decorCoeff <- smDecor$coefficients[newvars,];
+ncoef <- dc[newvars]
+cnames <- lapply(ncoef,names)
+names(cnames) <- NULL;
+decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
+pander::pander(decorCoeff)
+```
