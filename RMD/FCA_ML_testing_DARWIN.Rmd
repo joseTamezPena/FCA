@@ -1,5 +1,5 @@
 ---
-title: "FdeCA and the GDSTM"
+title: "FDeA and the GDSTM"
 output:
   html_document:
     df_print: paged
