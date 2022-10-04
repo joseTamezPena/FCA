@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the GDSTM"
+title: "FDeA and the GDSTM: DARWIN test"
 output:
   html_document:
     df_print: paged
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 
 ```
 
-# Effect of GDSTM-Based Decorrelation on Feature Discovery
+# Effect of GDSTM-Based Decorrelation on Feature Discovery: The DARWIN Evaluation
 
 Here we showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim is to discover decorrelate features hidden between the highly correlated features.
 
