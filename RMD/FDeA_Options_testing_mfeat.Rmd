@@ -1,17 +1,19 @@
 ---
-title: "FCA and the GDSTM"
-output: html_notebook
+title: "FDeA and the GDSTM"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ## GDSTM Decorrelation on the multiple features Dataset
 
-This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FCA**) algorithm on the mfeat data set:
+This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FDeA**) algorithm on the mfeat data set:
 
 > <https://archive.ics.uci.edu/ml/datasets/Multiple+Features>
 >
 > M. van Breukelen, R.P.W. Duin, D.M.J. Tax, and J.E. den Hartog, Handwritten digit recognition by combined classifiers, Kybernetika, vol. 34, no. 4, 1998, 381-386.
 
-This scrip uses FRESA.CAD and mlbench R packages:
+This script uses FRESA.CAD and mlbench R packages:
 
 ```{r functions,echo = TRUE }
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")

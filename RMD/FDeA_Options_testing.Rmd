@@ -1,11 +1,13 @@
 ---
-title: "FCA and the GDSTM"
-output: html_notebook
+title: "FDeA and the GDSTM"
+output:
+  html_document:
+    df_print: paged
 ---
 
-## FCA-Based Decorrelation on Vehicle
+## FDeA-Based Decorrelation on Vehicle
 
-This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FCA**) algorithm.
+This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FDeA**) algorithm.
 
 This demo uses FRESA.CAD and mlbench R packages:
 

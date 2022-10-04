@@ -1,5 +1,5 @@
 ---
-title: "FCA and the GDSTM"
+title: "FDeA and the GDSTM: Sonar Tests"
 output:
   html_document:
     df_print: paged

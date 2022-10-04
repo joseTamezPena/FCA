@@ -1,6 +1,8 @@
 ---
-title: "Filtered Fit: FCA and the GDSTM"
-output: html_notebook
+title: 'Filtered Fit: FDeA and the GDSTM'
+output:
+  html_document:
+    df_print: paged
 ---
 
 ## Filtered ML fit and the GDSTM with FRESA.CAD
