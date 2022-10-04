@@ -1,8 +1,16 @@
 ---
-title: "FDeA and the GDSTM: DARWIN test"
+title: "Parkinson: Decorrelation-Based Feature Discovery"
+author: "Jose Tamez"
+date: "2022-10-04"
 output:
-  html_document:
-    df_print: paged
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -13,8 +21,11 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 
 ```
 
-# Effect of GDSTM-Based Decorrelation on Feature Discovery: The DARWIN Evaluation
+# Outputs Analysis and Graphics: Effect of GDSTM-Based Decorrelation on Feature Discovery
 
+This will load the results of the Parkinson Analysis and create the outputs.
+
+## From the original
 Here we showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim is to discover decorrelate features hidden between the highly correlated features.
 
 This demo will use:
@@ -41,6 +52,8 @@ This demo will use:
 library("FRESA.CAD")
 library(readxl)
 library(vioplot)
+library(igraph)
+
 op <- par(no.readonly = TRUE)
 
 ```
@@ -56,69 +69,98 @@ signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
 
 ```
 
-## Data: The DARWIN Data-Set
+## Data: The Parkinson Data-Set
 
 The data to process is described in:
 
-Cilia, Nicole D., Giuseppe De Gregorio, Claudio De Stefano, Francesco Fontanella, Angelo Marcelli, and Antonio Parziale. "Diagnosing Alzheimer's disease from on-line handwriting: a novel dataset and performance benchmarking." Engineering Applications of Artificial Intelligence 111 (2022): 104822.
+Erdogdu Sakar, Betul, Gorkem Serbes, and C. Okan Sakar. "Analyzing the effectiveness of vocal features in early telediagnosis of Parkinson's disease." *PloS one* 12, no. 8 (2017): e0182428.
 
-From the DARWIN_readme.rtf
+The data was obtained from the UCI ML repository:
 
-" *The DARWIN dataset contains handwriting data collected according to the acquisition protocol described in [1], which is composed of 25 handwriting tasks. The protocol  was specifically designed for the early detection of Alzheimer\'s disease (AD). The dataset includes data from 174 participants (89 AD patients and 85 healthy people).
-The file \"DARWIN.csv\" contains the acquired data. The file consists of one row for each participant
-plus an additional header row. The first row is the header row, the next 89 rows collect patients data, whereas the remaining 84 rows collect information from healthy people. The file consists of 452 columns. The first column shows participants' identifiers,whereas the last column shows the class to which each participant belongs.  This value can be equal to  'P' (Patient) or 'H' (Healthy). The remaining
-columns report the features extracted from a specific task. The tasks performed are 25, and for each task 18 features have been extracted. The column will be identified by the name of the features followed by a numeric identifier representing the task the feature is extracted. E.g., the column with the header "total_time8" collects the values for the "total time" feature extracted from task #8.*"
+<https://archive.ics.uci.edu/ml/datasets/Parkinson%27s+Disease+Classification>
+
+I added a column to the data identifying the repeated experiments.
 
 ```{r}
-DARWIN <- read.csv("~/GitHub/FCA/Data/DARWIN/DARWIN.csv")
-rownames(DARWIN) <- DARWIN$ID
-DARWIN$ID <- NULL
-DARWIN$class <- 1*(DARWIN$class=="P")
-print(table(DARWIN$class))
 
-DARWIN[,1:ncol(DARWIN)] <- sapply(DARWIN,as.numeric)
 
-whof <- !(colnames(DARWIN) %in% c("class"));
-DARWIN[,whof] <- signedlog(DARWIN[,whof])
+load(file="~/GitHub/FCA/ParkinsonDemo.RData")
 
-## The size of training
-
-trainFraction=0.65;
+namecode <- read.csv("~/GitHub/FCA/Data/Parkinson_names.csv")
 
 ```
 
-## Correlation Matrix of the DARWIN Data
+### The Average of the Three Repetitions
+
+Each subject had three repeated observations. Here I'll use the average of the three experiments per subject.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-cormat <- cor(DARWIN,method="spearman")
+# rep1Parkison <- subset(pd_speech_features,RID==1)
+# rownames(rep1Parkison) <- rep1Parkison$id
+# rep1Parkison$id <- NULL
+# rep1Parkison$RID <- NULL
+# rep1Parkison[,1:ncol(rep1Parkison)] <- sapply(rep1Parkison,as.numeric)
+# 
+# rep2Parkison <- subset(pd_speech_features,RID==2)
+# rownames(rep2Parkison) <- rep2Parkison$id
+# rep2Parkison$id <- NULL
+# rep2Parkison$RID <- NULL
+# rep2Parkison[,1:ncol(rep2Parkison)] <- sapply(rep2Parkison,as.numeric)
+# 
+# rep3Parkison <- subset(pd_speech_features,RID==3)
+# rownames(rep3Parkison) <- rep3Parkison$id
+# rep3Parkison$id <- NULL
+# rep3Parkison$RID <- NULL
+# rep3Parkison[,1:ncol(rep3Parkison)] <- sapply(rep3Parkison,as.numeric)
+# 
+# whof <- !(colnames(rep1Parkison) %in% c("gender","class"));
+# avgParkison <- rep1Parkison;
+# avgParkison[,whof] <- (rep1Parkison[,whof] + rep2Parkison[,whof] + rep3Parkison[,whof])/3
+# ## I apply the log transform to the data
+# avgParkison[,whof] <- signedlog(avgParkison[,whof])
+# pander::pander(table(avgParkison$class))
+
+```
+
+### Correlation Matrix of the Parkinson Data
+
+The heat-map of the correlation:
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cormat <- cor(avgParkison,method="spearman")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
                   scale = "none",
                   mar = c(10,10),
                   col=rev(heat.colors(5)),
                   main = "Raw Correlation",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
+                  cexRow = 0.35,
+                  cexCol = 0.35,
                   key.title=NA,
                   key.xlab="Spearman Correlation",
-                  xlab="Feature", ylab="Feature")
+                  xlab="Feature", ylab="Feature",
+#                  srtRow = 45,
+#                  srtCol = 45
+)
 
 
 
 ```
 
-## Train and test set
+### Training and Testing Sets
+
+We divided the data into training and testing sets.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-set.seed(2)
-caseSet <- subset(DARWIN, class == 1)
-controlSet <- subset(DARWIN, class == 0)
-caseTrainSize <- nrow(caseSet)*trainFraction;
-controlTrainSize <- nrow(controlSet)*trainFraction;
-sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
-sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
-trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
-testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
+# set.seed(2)
+# caseSet <- subset(avgParkison, class == 1)
+# controlSet <- subset(avgParkison, class == 0)
+# caseTrainSize <- nrow(caseSet)*trainFraction;
+# controlTrainSize <- nrow(controlSet)*trainFraction;
+# sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
+# sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
+# trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
+# testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
 pander::pander(table(trainSet$class))
 pander::pander(table(testSet$class))
 
@@ -131,12 +173,14 @@ I compute a decorrelated version of the training and testing sets using the *GDS
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 ## The GDSTM transformation driven by the Outcome
-deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
-deTest <- predictDecorrelate(deTrain,testSet)
+
+# deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
+# deTest <- predictDecorrelate(deTrain,testSet)
 
 ## The GDSTM transformation without outcome
-deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
-deTestU <- predictDecorrelate(deTrainU,testSet)
+
+# deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
+# deTestU <- predictDecorrelate(deTrainU,testSet)
 
 ```
 
@@ -152,8 +196,8 @@ gplots::heatmap.2(abs(cormat),
                   mar = c(10,10),
                   col=rev(heat.colors(5)),
                   main = "Test Set Correlation after GDSTM",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
+                  cexRow = 0.35,
+                  cexCol = 0.35,
                   key.title=NA,
                   key.xlab="Spearman Correlation",
                   xlab="Feature", ylab="Feature")
@@ -169,13 +213,13 @@ par(op)
 par(mfrow=c(1,3))
 
 ## The Raw validation
-cvBSWiMSRaw <- randomCV(DARWIN,
-                "class",
-                fittingFunction= BSWiMS.model,
-                classSamplingType = "Pro",
-                trainFraction = trainFraction,
-                repetitions = 150
-)
+# cvBSWiMSRaw <- randomCV(avgParkison,
+#                 "class",
+#                 fittingFunction= BSWiMS.model,
+#                 classSamplingType = "Pro",
+#                 trainFraction = trainFraction,
+#                 repetitions = 150
+# )
 
 bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.60)
 pander::pander(bpraw$CM.analysis$tab)
@@ -184,15 +228,15 @@ pander::pander(bpraw$aucs)
 pander::pander(bpraw$berror)
 
 ## The validation with Outcome-driven Decorrelation
-cvBSWiMSDeCor <- randomCV(DARWIN,
-                "class",
-                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
-                fittingFunction= filteredFit,
-                fitmethod=BSWiMS.model,
-                filtermethod=NULL,
-                DECOR = TRUE,
-                DECOR.control=list(Outcome="class",thr=0.8)
-)
+# cvBSWiMSDeCor <- randomCV(avgParkison,
+#                 "class",
+#                 trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+#                 fittingFunction= filteredFit,
+#                 fitmethod=BSWiMS.model,
+#                 filtermethod=NULL,
+#                 DECOR = TRUE,
+#                 DECOR.control=list(Outcome="class",thr=0.8)
+# )
 
 bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
 pander::pander(bpDecor$CM.analysis$tab)
@@ -204,15 +248,15 @@ pander::pander(bpDecor$berror)
 pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
 
 ## The validation of Decorrelation without the outcome restriction
-cvBSWiMSDeCorU <- randomCV(DARWIN,
-                "class",
-                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
-                fittingFunction= filteredFit,
-                fitmethod=BSWiMS.model,
-                filtermethod=NULL,
-                DECOR = TRUE,
-                DECOR.control=list(thr=0.8)
-)
+# cvBSWiMSDeCorU <- randomCV(avgParkison,
+#                 "class",
+#                 trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+#                 fittingFunction= filteredFit,
+#                 fitmethod=BSWiMS.model,
+#                 filtermethod=NULL,
+#                 DECOR = TRUE,
+#                 DECOR.control=list(thr=0.8)
+# )
 
 bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"BSWiMS Data Driven GDSTM",cex=0.60)
 pander::pander(bpDecorU$CM.analysis$tab)
@@ -220,7 +264,7 @@ pander::pander(bpDecorU$accc)
 pander::pander(bpDecorU$aucs)
 pander::pander(bpDecorU$berror)
 
-### Here we compute the probability that the unsupervised decorrelation ROC is superior to the RAW ROC. 
+### Here we compute the probability that the blind decorrelation ROC is superior to the RAW ROC. 
 pander::pander(roc.test(bpDecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
 par(op)
 
@@ -237,17 +281,17 @@ First, I'll compute the BSWiMS models for the original data, and for the decorre
 par(op)
 par(mfrow=c(1,3))
 
-bm <- BSWiMS.model(class~.,trainSet,NumberofRepeats = 20)
+# bm <- BSWiMS.model(class~.,trainSet,NumberofRepeats = 20)
 bpraw <- predictionStats_binary(cbind(testSet$class,predict(bm,testSet)),"BSWiMS RAW",cex=0.60)
 
-bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 20)
-bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"BSWiMS Outcome-Driven Decor",cex=0.60)
+# bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 20)
+bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"Outcome-Driven Decorrelation",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecor$ROC.analysis$roc.predictor))
 
 
-bmdU <- BSWiMS.model(class~.,deTrainU,NumberofRepeats = 20)
-bpdecorU <- predictionStats_binary(cbind(deTest$class,predict(bmdU,deTestU)),"BSWiMS Unsupervised Decor",cex=0.60)
+# bmdU <- BSWiMS.model(class~.,deTrainU,NumberofRepeats = 20)
+bpdecorU <- predictionStats_binary(cbind(deTest$class,predict(bmdU,deTestU)),"Blind Decorrelation",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecorU$ROC.analysis$roc.predictor))
 
@@ -257,63 +301,102 @@ par(op)
 
 ## The feature associations
 
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 9.0, fig.width= 4.0}
+par(op)
+par(mfrow=c(3,1))
 ### The raw model
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bm$bagging$formulaNetwork)
-csum <- apply(bm$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bm$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
+pander::pander(nrow(bm$bagging$formulaNetwork))
 
-```
+
+cmax <- apply(bm$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
+adma <- bm$bagging$formulaNetwork[cnames,cnames]
+
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Original Feature Association")
+
+
 
 ### The Outcome Driven Model
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bmd$bagging$formulaNetwork)
-csum <- apply(bmd$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bmd$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network: Outcome Driven",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
+pander::pander(nrow(bmd$bagging$formulaNetwork))
 
-```
 
-### The Unsupervised Decorrelation
+cmax <- apply(bmd$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
+adma <- bmd$bagging$formulaNetwork[cnames,cnames]
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bmdU$bagging$formulaNetwork)
-csum <- apply(bmdU$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bmdU$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network: Unsupervised",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Outcome-Driven Decorrelation")
+
+
+### The Blind Decorrelation
+
+pander::pander(nrow(bmdU$bagging$formulaNetwork))
+
+
+cmax <- apply(bmdU$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
+adma <- bmdU$bagging$formulaNetwork[cnames,cnames]
+
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Blind Decorrelation")
 
 ```
 
@@ -340,7 +423,7 @@ rawnames <- rownames(smOriginal$coefficients)
 smDecor <- summary(bmd)
 decornames <- rownames(smDecor$coefficients)
 
-### From Unsupervised Decorrelation
+### From Blind Decorrelation
 smDecorU <- summary(bmdU)
 decornamesU <- rownames(smDecorU$coefficients)
 
@@ -361,7 +444,7 @@ allDevar <- str_remove(allDevar,"Ba_")
 allDevar <- unique(allDevar)
 
 
-# The analysis of the unsupervised decorrelation
+# The analysis of the blind decorrelation
 
 dcU <- getDerivedCoefficients(deTrainU)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
@@ -448,14 +531,13 @@ decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
 pander::pander(decorCoeff)
 ```
 
-## Differences Between Unsupervised vs Outcome-Drive Decorrelation
+## Differences Between Blind vs Outcome-Drive Decorrelation
 
-In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the unsupervised decorrelated transformation
+In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the blind decorrelated transformation
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 par(op)
 par(mfrow=c(1,1))
-
 
 
 smDecorU <- summary(bmdU)
@@ -479,22 +561,16 @@ x1 <- unn[get_De_names]
 x2 <- unnU[get_De_namesU]
 X3 <- x1[!(get_De_names %in% get_De_namesU)]
 X4 <- x2[!(get_De_namesU %in% get_De_names)]
-vioplot(x1, x2, X3,X4, names=c("Outcome Driven", "Unsupervised","Not in Un","Not in Outcome-Driven"),ylab="Z IDI",
+vioplot(x1, x2, X3,X4, names=c("Outcome Driven", "Blind","Not in Blind","Not in Outcome-Driven"),ylab="Z IDI",
    col="gold")
 title("Violin Plots of Unaltered-Basis")
 
 sameFeatures <- get_De_names[get_De_names %in% get_De_namesU]
 pander::pander(as.matrix(unn[sameFeatures]))
-## The features by Outcome Drive not in Unsupervised
+## The features by Outcome Drive not in blind
 pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
 
 ## The features not in outcome driven
 pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
 ```
 
-#### Saving all the generated data
-
-```{r}
-save.image("~/GitHub/FCA/DARWINDemo.RData")
-
-```

@@ -1,8 +1,16 @@
 ---
-title: "FDeA and the GDSTM: DARWIN test"
+title: "FDeA and the GDSTM: DARWIN Test"
+author: "Jose Tamez"
+date: "2022-10-04"
 output:
-  html_document:
-    df_print: paged
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -14,6 +22,8 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 ```
 
 # Effect of GDSTM-Based Decorrelation on Feature Discovery: The DARWIN Evaluation
+
+***(In this version we are loading all the results)***
 
 Here we showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim is to discover decorrelate features hidden between the highly correlated features.
 
@@ -41,6 +51,8 @@ This demo will use:
 library("FRESA.CAD")
 library(readxl)
 library(vioplot)
+library(igraph)
+
 op <- par(no.readonly = TRUE)
 
 ```
@@ -64,26 +76,29 @@ Cilia, Nicole D., Giuseppe De Gregorio, Claudio De Stefano, Francesco Fontanella
 
 From the DARWIN_readme.rtf
 
-" *The DARWIN dataset contains handwriting data collected according to the acquisition protocol described in [1], which is composed of 25 handwriting tasks. The protocol  was specifically designed for the early detection of Alzheimer\'s disease (AD). The dataset includes data from 174 participants (89 AD patients and 85 healthy people).
-The file \"DARWIN.csv\" contains the acquired data. The file consists of one row for each participant
-plus an additional header row. The first row is the header row, the next 89 rows collect patients data, whereas the remaining 84 rows collect information from healthy people. The file consists of 452 columns. The first column shows participants' identifiers,whereas the last column shows the class to which each participant belongs.  This value can be equal to  'P' (Patient) or 'H' (Healthy). The remaining
-columns report the features extracted from a specific task. The tasks performed are 25, and for each task 18 features have been extracted. The column will be identified by the name of the features followed by a numeric identifier representing the task the feature is extracted. E.g., the column with the header "total_time8" collects the values for the "total time" feature extracted from task #8.*"
+" *The DARWIN dataset contains handwriting data collected according to the acquisition protocol described in [1], which is composed of 25 handwriting tasks. The protocol  was specifically designed for the early detection of Alzheimer's disease (AD). The dataset includes data from 174 participants (89 AD patients and 85 healthy people). The file "DARWIN.csv" contains the acquired data. The file consists of one row for each participant plus an additional header row. The first row is the header row, the next 89 rows collect patients data, whereas the remaining 84 rows collect information from healthy people. The file consists of 452 columns. The first column shows participants' identifiers,whereas the last column shows the class to which each participant belongs.  This value can be equal to  'P' (Patient) or 'H' (Healthy). The remaining columns report the features extracted from a specific task. The tasks performed are 25, and for each task 18 features have been extracted. The column will be identified by the name of the features followed by a numeric identifier representing the task the feature is extracted. E.g., the column with the header "total_time8" collects the values for the "total time" feature extracted from task #8.*"
 
 ```{r}
-DARWIN <- read.csv("~/GitHub/FCA/Data/DARWIN/DARWIN.csv")
-rownames(DARWIN) <- DARWIN$ID
-DARWIN$ID <- NULL
-DARWIN$class <- 1*(DARWIN$class=="P")
-print(table(DARWIN$class))
+#### Saving all the generated data
 
-DARWIN[,1:ncol(DARWIN)] <- sapply(DARWIN,as.numeric)
+load(file="~/GitHub/FCA/DARWINDemo.RData")
+namecode <- read.csv("~/GitHub/FCA/Data/DARWIN/Darnames.csv")
 
-whof <- !(colnames(DARWIN) %in% c("class"));
-DARWIN[,whof] <- signedlog(DARWIN[,whof])
 
-## The size of training
-
-trainFraction=0.65;
+# DARWIN <- read.csv("~/GitHub/FCA/Data/DARWIN/DARWIN.csv")
+# rownames(DARWIN) <- DARWIN$ID
+# DARWIN$ID <- NULL
+# DARWIN$class <- 1*(DARWIN$class=="P")
+# print(table(DARWIN$class))
+# 
+# DARWIN[,1:ncol(DARWIN)] <- sapply(DARWIN,as.numeric)
+# 
+# whof <- !(colnames(DARWIN) %in% c("class"));
+# DARWIN[,whof] <- signedlog(DARWIN[,whof])
+# 
+# ## The size of training
+# 
+# trainFraction=0.65;
 
 ```
 
@@ -110,17 +125,18 @@ gplots::heatmap.2(abs(cormat),
 ## Train and test set
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-set.seed(2)
-caseSet <- subset(DARWIN, class == 1)
-controlSet <- subset(DARWIN, class == 0)
-caseTrainSize <- nrow(caseSet)*trainFraction;
-controlTrainSize <- nrow(controlSet)*trainFraction;
-sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
-sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
-trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
-testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
-pander::pander(table(trainSet$class))
-pander::pander(table(testSet$class))
+
+# set.seed(2)
+# caseSet <- subset(DARWIN, class == 1)
+# controlSet <- subset(DARWIN, class == 0)
+# caseTrainSize <- nrow(caseSet)*trainFraction;
+# controlTrainSize <- nrow(controlSet)*trainFraction;
+# sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
+# sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
+# trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
+# testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
+# pander::pander(table(trainSet$class))
+# pander::pander(table(testSet$class))
 
 
 ```
@@ -130,13 +146,14 @@ pander::pander(table(testSet$class))
 I compute a decorrelated version of the training and testing sets using the *GDSTMDecorrelation()* function of FRESA.CAD. The first decorrelation will be driven by features associated with the outcome. The second decorrelation will find the GDSTM without the outcome restriction.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-## The GDSTM transformation driven by the Outcome
-deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
-deTest <- predictDecorrelate(deTrain,testSet)
 
-## The GDSTM transformation without outcome
-deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
-deTestU <- predictDecorrelate(deTrainU,testSet)
+# ## The GDSTM transformation driven by the Outcome
+# deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
+# deTest <- predictDecorrelate(deTrain,testSet)
+# 
+# ## The GDSTM transformation without outcome
+# deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
+# deTestU <- predictDecorrelate(deTrainU,testSet)
 
 ```
 
@@ -169,13 +186,13 @@ par(op)
 par(mfrow=c(1,3))
 
 ## The Raw validation
-cvBSWiMSRaw <- randomCV(DARWIN,
-                "class",
-                fittingFunction= BSWiMS.model,
-                classSamplingType = "Pro",
-                trainFraction = trainFraction,
-                repetitions = 150
-)
+# cvBSWiMSRaw <- randomCV(DARWIN,
+#                 "class",
+#                 fittingFunction= BSWiMS.model,
+#                 classSamplingType = "Pro",
+#                 trainFraction = trainFraction,
+#                 repetitions = 150
+# )
 
 bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.60)
 pander::pander(bpraw$CM.analysis$tab)
@@ -184,15 +201,15 @@ pander::pander(bpraw$aucs)
 pander::pander(bpraw$berror)
 
 ## The validation with Outcome-driven Decorrelation
-cvBSWiMSDeCor <- randomCV(DARWIN,
-                "class",
-                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
-                fittingFunction= filteredFit,
-                fitmethod=BSWiMS.model,
-                filtermethod=NULL,
-                DECOR = TRUE,
-                DECOR.control=list(Outcome="class",thr=0.8)
-)
+# cvBSWiMSDeCor <- randomCV(DARWIN,
+#                 "class",
+#                 trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+#                 fittingFunction= filteredFit,
+#                 fitmethod=BSWiMS.model,
+#                 filtermethod=NULL,
+#                 DECOR = TRUE,
+#                 DECOR.control=list(Outcome="class",thr=0.8)
+# )
 
 bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
 pander::pander(bpDecor$CM.analysis$tab)
@@ -204,15 +221,15 @@ pander::pander(bpDecor$berror)
 pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
 
 ## The validation of Decorrelation without the outcome restriction
-cvBSWiMSDeCorU <- randomCV(DARWIN,
-                "class",
-                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
-                fittingFunction= filteredFit,
-                fitmethod=BSWiMS.model,
-                filtermethod=NULL,
-                DECOR = TRUE,
-                DECOR.control=list(thr=0.8)
-)
+# cvBSWiMSDeCorU <- randomCV(DARWIN,
+#                 "class",
+#                 trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+#                 fittingFunction= filteredFit,
+#                 fitmethod=BSWiMS.model,
+#                 filtermethod=NULL,
+#                 DECOR = TRUE,
+#                 DECOR.control=list(thr=0.8)
+# )
 
 bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"BSWiMS Data Driven GDSTM",cex=0.60)
 pander::pander(bpDecorU$CM.analysis$tab)
@@ -237,16 +254,16 @@ First, I'll compute the BSWiMS models for the original data, and for the decorre
 par(op)
 par(mfrow=c(1,3))
 
-bm <- BSWiMS.model(class~.,trainSet,NumberofRepeats = 20)
+#bm <- BSWiMS.model(class~.,trainSet,NumberofRepeats = 20)
 bpraw <- predictionStats_binary(cbind(testSet$class,predict(bm,testSet)),"BSWiMS RAW",cex=0.60)
 
-bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 20)
+#bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 20)
 bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"BSWiMS Outcome-Driven Decor",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecor$ROC.analysis$roc.predictor))
 
 
-bmdU <- BSWiMS.model(class~.,deTrainU,NumberofRepeats = 20)
+#bmdU <- BSWiMS.model(class~.,deTrainU,NumberofRepeats = 20)
 bpdecorU <- predictionStats_binary(cbind(deTest$class,predict(bmdU,deTestU)),"BSWiMS Unsupervised Decor",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecorU$ROC.analysis$roc.predictor))
@@ -257,63 +274,102 @@ par(op)
 
 ## The feature associations
 
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 9.0, fig.width= 4.0}
+par(op)
+par(mfrow=c(3,1))
+
 ### The raw model
+pander::pander(nrow(bm$bagging$formulaNetwork))
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bm$bagging$formulaNetwork)
-csum <- apply(bm$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bm$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
 
-```
+cmax <- apply(bm$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.75])
+cmax <- cmax[cmax>=0.75]
+adma <- bm$bagging$formulaNetwork[cnames,cnames]
+
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Original Feature Association")
+
+
 
 ### The Outcome Driven Model
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bmd$bagging$formulaNetwork)
-csum <- apply(bmd$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bmd$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network: Outcome Driven",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
+pander::pander(nrow(bmd$bagging$formulaNetwork))
 
-```
+
+cmax <- apply(bmd$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.75])
+cmax <- cmax[cmax>=0.75]
+adma <- bmd$bagging$formulaNetwork[cnames,cnames]
+
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Outcome-Driven Decorrelation")
+
 
 ### The Unsupervised Decorrelation
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-nrow(bmdU$bagging$formulaNetwork)
-csum <- apply(bmdU$bagging$formulaNetwork,2,sum)
-cnames <- names(csum[csum>0.5])
-gplots::heatmap.2(log10(100*bmdU$bagging$formulaNetwork[cnames,cnames]+1),
-                  trace = "none",
-                  scale = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(5)),
-                  main = "BSWiMS Network: Unsupervised",
-                  cexRow = 0.45,
-                  cexCol = 0.45,
-                  key.title=NA,
-                  key.xlab="log10(# of Connections)",
-                  xlab="Feature", ylab="Feature")
+pander::pander(nrow(bmdU$bagging$formulaNetwork))
+
+
+cmax <- apply(bmdU$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.75])
+cmax <- cmax[cmax>=0.75]
+adma <- bmdU$bagging$formulaNetwork[cnames,cnames]
+
+for (cx in c(1:nrow(namecode)))
+{
+  cnames <- str_replace_all(cnames,namecode[cx,1],namecode[cx,2])
+}
+cnames <- str_replace_all(cnames,"_","")
+cnames <- str_replace_all(cnames,"th","")
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Unsupervised Decorrelation")
 
 ```
 
@@ -456,6 +512,12 @@ In this section I will show the differences in unaltered basis vectors between t
 par(op)
 par(mfrow=c(1,1))
 
+# name_in <- c("acc","air","extension","gmrt","index","jerk","max","mean","num","paper","pendown","pressure","speed","time","total","var")
+# name_out <- c("a","A","E","G","I","J","M","m","N","P","p","r","S","t","T","V")
+# for (nx in c(1:length(name_in)))
+# {
+#   cnames <- str_replace_all(cnames,name_in[nx],name_out[nx])
+# }
 
 
 smDecorU <- summary(bmdU)
@@ -490,11 +552,4 @@ pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
 
 ## The features not in outcome driven
 pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
-```
-
-#### Saving all the generated data
-
-```{r}
-save.image("~/GitHub/FCA/DARWINDemo.RData")
-
 ```
