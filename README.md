@@ -22,7 +22,7 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
 -   **ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
 
-    -   output at: <https://rpubs.com/J_Tamez/Arcene_FilteredFit>
+    -   output at: <https://rpubs.com/J_Tamez/GDSTMFeatureDiscovery>
 
 -   **irisexample.R** showcase the effect of the FCA algorithm on the iris data set.
 
