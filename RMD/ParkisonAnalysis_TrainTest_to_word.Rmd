@@ -3,14 +3,14 @@ title: "Parkinson: Decorrelation-Based Feature Discovery"
 author: "Jose Tamez"
 date: "2022-10-04"
 output:
-  html_document: 
-    toc: yes
-    fig_caption: yes
-    number_sections: yes
   word_document: 
     reference_docx: WordStyle_FRESA.docx
     toc: yes
     fig_caption: yes
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -26,7 +26,12 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 This will load the results of the Parkinson Analysis and create the outputs.
 
 ## From the original
-Here we showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim is to discover decorrelate features hidden between the highly correlated features.
+
+Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
+
+1.  To improve model performance by uncovering the hidden information between correlated features.
+
+2.  To simplify the interpretation of the machine learning models.
 
 This demo will use:
 
@@ -55,6 +60,9 @@ library(vioplot)
 library(igraph)
 
 op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
 
 ```
 
@@ -301,10 +309,9 @@ par(op)
 
 ## The feature associations
 
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 9.0, fig.width= 4.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 9.0}
 par(op)
-par(mfrow=c(3,1))
+par(mfrow=c(1,3))
 ### The raw model
 
 pander::pander(nrow(bm$bagging$formulaNetwork))
@@ -345,6 +352,7 @@ pander::pander(nrow(bmd$bagging$formulaNetwork))
 cmax <- apply(bmd$bagging$formulaNetwork,2,max)
 cnames <- names(cmax[cmax>=0.5])
 cmax <- cmax[cmax>=0.5]
+outcomeNames <- cnames
 adma <- bmd$bagging$formulaNetwork[cnames,cnames]
 
 for (cx in c(1:nrow(namecode)))
@@ -361,6 +369,8 @@ gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted
 gr$layout <- layout_with_fr
 
 fc <- cluster_optimal(gr)
+clusterOutcome <- fc
+clusterOutcome$names <- outcomeNames
 plot(fc, gr,
      vertex.size=20*cmax,
      vertex.label.cex=0.5,
@@ -434,6 +444,8 @@ dc <- getDerivedCoefficients(deTrain)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dc <- decornames[decornames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
+theDeFormulas <- selectedlist
+
 pander::pander(selectedlist)
 names(selectedlist) <- NULL
 ### 2b Get the the names of the original features
@@ -531,7 +543,7 @@ decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
 pander::pander(decorCoeff)
 ```
 
-## Differences Between Blind vs Outcome-Driven Decorrelation
+## Differences Between Blind *vs.* Outcome-Driven Decorrelation
 
 In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the blind decorrelated transformation
 
@@ -574,3 +586,63 @@ pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
 pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
 ```
 
+### The Final Table
+
+I'll create a table subset of the logistic model from the Outcome-Driven decorrelated data.
+
+The table will have:
+
+1.  The top associated features described by the feature network, as well as, and the new features.
+
+    1.  For Decorrelated features it will provide the decorrelation formula
+
+2.  Nugget labels
+
+    1.  The label of nugget as found by the clustering procedure
+
+3.  The feature coefficient
+
+4.  The feature Odd ratios and their corresponding 95%CI
+
+```{r}
+
+## The features in top nugget
+clusterFeatures <- clusterOutcome$names
+## The new features 
+discoveredFeatures <- newvars[zvaluePrePost$ZUni<1.96]
+
+tablefinal <- smDecor$coefficients[unique(c(clusterFeatures,discoveredFeatures)),
+                                   c("Estimate","lower","OR","upper","z.IDI")]
+
+nugget <- clusterOutcome$membership
+names(nugget) <- clusterOutcome$names
+tablefinal$Nugget <- nugget[rownames(tablefinal)]
+tablefinal$Nugget[is.na(tablefinal$Nugget)] <- "D"
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+tablefinal$DecorFormula <- deFromula[rownames(tablefinal)]
+pander::pander(tablefinal)
+
+```

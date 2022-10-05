@@ -3,14 +3,14 @@ title: "FDeA and the GDSTM: DARWIN Test"
 author: "Jose Tamez"
 date: "2022-10-04"
 output:
-  html_document: 
-    toc: yes
-    fig_caption: yes
-    number_sections: yes
   word_document: 
     reference_docx: WordStyle_FRESA.docx
     toc: yes
     fig_caption: yes
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -54,6 +54,9 @@ library(vioplot)
 library(igraph)
 
 op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
 
 ```
 
@@ -218,7 +221,8 @@ pander::pander(bpDecor$aucs)
 pander::pander(bpDecor$berror)
 
 ### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
-pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
+pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
 
 ## The validation of Decorrelation without the outcome restriction
 # cvBSWiMSDeCorU <- randomCV(DARWIN,
@@ -238,7 +242,7 @@ pander::pander(bpDecorU$aucs)
 pander::pander(bpDecorU$berror)
 
 ### Here we compute the probability that the blind decorrelation ROC is superior to the RAW ROC. 
-pander::pander(roc.test(bpDecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
+pander::pander(roc.test(bpDecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
 par(op)
 
 
@@ -272,20 +276,29 @@ par(op)
 
 ```
 
-## The feature associations
+## The Feature Associations
 
+I'll print the graph showing the association between features. Each feature cluster represents a logistic regression formula (formula nugget) discovered by the BSWiMS method. The figure will plot:
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 9.0, fig.width= 4.0}
+-   Raw formula network
+
+-   Outcome-driven network
+
+-   Blind network
+
+The plots will show only formula networks with more than 50% of occurrence and 25% of feature to feature association.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 9.0}
 par(op)
-par(mfrow=c(3,1))
-
+par(mfrow=c(1,3))
 ### The raw model
+
 pander::pander(nrow(bm$bagging$formulaNetwork))
 
 
 cmax <- apply(bm$bagging$formulaNetwork,2,max)
-cnames <- names(cmax[cmax>=0.75])
-cmax <- cmax[cmax>=0.75]
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
 adma <- bm$bagging$formulaNetwork[cnames,cnames]
 
 for (cx in c(1:nrow(namecode)))
@@ -316,8 +329,10 @@ pander::pander(nrow(bmd$bagging$formulaNetwork))
 
 
 cmax <- apply(bmd$bagging$formulaNetwork,2,max)
-cnames <- names(cmax[cmax>=0.75])
-cmax <- cmax[cmax>=0.75]
+cnames <- names(cmax[cmax>=0.5])
+outcomeNames <- cnames
+
+cmax <- cmax[cmax>=0.5]
 adma <- bmd$bagging$formulaNetwork[cnames,cnames]
 
 for (cx in c(1:nrow(namecode)))
@@ -334,6 +349,9 @@ gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted
 gr$layout <- layout_with_fr
 
 fc <- cluster_optimal(gr)
+clusterOutcome <- fc
+clusterOutcome$names <- outcomeNames
+
 plot(fc, gr,
      vertex.size=20*cmax,
      vertex.label.cex=0.5,
@@ -347,8 +365,8 @@ pander::pander(nrow(bmdU$bagging$formulaNetwork))
 
 
 cmax <- apply(bmdU$bagging$formulaNetwork,2,max)
-cnames <- names(cmax[cmax>=0.75])
-cmax <- cmax[cmax>=0.75]
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
 adma <- bmdU$bagging$formulaNetwork[cnames,cnames]
 
 for (cx in c(1:nrow(namecode)))
@@ -407,6 +425,7 @@ dc <- getDerivedCoefficients(deTrain)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dc <- decornames[decornames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
+theDeFormulas <- selectedlist
 pander::pander(selectedlist)
 names(selectedlist) <- NULL
 ### 2b Get the the names of the original features
@@ -482,7 +501,7 @@ text(zvaluePrePost$ZUni,zvaluePrePost$NewZ,rownames(zvaluePrePost),srt=65,cex=0.
 
 ```
 
-### The Summary of the Decorrelated-based Model
+### The Summary of the Decorrelated-Based Model
 
 Here I will print the summary statistics of the Logistic models found by BSWiMS, using the original and transformed dataset. After that, I will show the characteristics of the features not found by the original analysis.
 
@@ -504,20 +523,13 @@ decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
 pander::pander(decorCoeff)
 ```
 
-## Differences Between Blind vs Outcome-Drive Decorrelation
+## Differences Between Blind *vs.* Outcome-Driven Decorrelation
 
-In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the blind decorrelated transformation
+In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation *vs.* the blind decorrelated transformation
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 par(op)
 par(mfrow=c(1,1))
-
-# name_in <- c("acc","air","extension","gmrt","index","jerk","max","mean","num","paper","pendown","pressure","speed","time","total","var")
-# name_out <- c("a","A","E","G","I","J","M","m","N","P","p","r","S","t","T","V")
-# for (nx in c(1:length(name_in)))
-# {
-#   cnames <- str_replace_all(cnames,name_in[nx],name_out[nx])
-# }
 
 
 smDecorU <- summary(bmdU)
@@ -541,7 +553,12 @@ x1 <- unn[get_De_names]
 x2 <- unnU[get_De_namesU]
 X3 <- x1[!(get_De_names %in% get_De_namesU)]
 X4 <- x2[!(get_De_namesU %in% get_De_names)]
-vioplot(x1, x2, X3,X4, names=c("Outcome Driven", "Blind","Not in Blind","Not in Outcome-Driven"),ylab="Z IDI",
+vioplot(x1, x2, X3,X4, 
+        names = c("Outcome-Driven", 
+                  "Blind",
+                  "Not in Blind",
+                  "Not in Outcome-Driven"),
+        ylab="Z IDI",
    col="gold")
 title("Violin Plots of Unaltered-Basis")
 
@@ -552,4 +569,65 @@ pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
 
 ## The features not in outcome driven
 pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
+```
+
+### The Final Table
+
+I'll create a table subset of the logistic model from the Outcome-Driven decorrelated data.
+
+The table will have:
+
+1.  The top associated features described by the feature network, as well as, and the new features.
+
+    1.  For Decorrelated features it will provide the decorrelation formula
+
+2.  Nugget labels
+
+    1.  The label of nugget as found by the clustering procedure
+
+3.  The feature coefficient
+
+4.  The feature Odd ratios and their corresponding 95%CI
+
+```{r}
+
+## The features in top nugget
+clusterFeatures <- clusterOutcome$names
+## The new features 
+discoveredFeatures <- newvars[zvaluePrePost$ZUni<1.96]
+
+tablefinal <- smDecor$coefficients[unique(c(clusterFeatures,discoveredFeatures)),
+                                   c("Estimate","lower","OR","upper","z.IDI")]
+
+nugget <- clusterOutcome$membership
+names(nugget) <- clusterOutcome$names
+tablefinal$Nugget <- nugget[rownames(tablefinal)]
+tablefinal$Nugget[is.na(tablefinal$Nugget)] <- "D"
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+tablefinal$DecorFormula <- deFromula[rownames(tablefinal)]
+pander::pander(tablefinal)
+
 ```
