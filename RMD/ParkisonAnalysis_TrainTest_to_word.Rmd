@@ -3,14 +3,14 @@ title: "Parkinson: Decorrelation-Based Feature Discovery"
 author: "Jose Tamez"
 date: "2022-10-04"
 output:
-  word_document: 
-    reference_docx: WordStyle_FRESA.docx
-    toc: yes
-    fig_caption: yes
   html_document: 
     toc: yes
     fig_caption: yes
     number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -531,7 +531,7 @@ decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
 pander::pander(decorCoeff)
 ```
 
-## Differences Between Blind vs Outcome-Drive Decorrelation
+## Differences Between Blind vs Outcome-Driven Decorrelation
 
 In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the blind decorrelated transformation
 

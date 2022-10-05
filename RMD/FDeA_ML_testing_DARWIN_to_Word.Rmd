@@ -3,14 +3,14 @@ title: "FDeA and the GDSTM: DARWIN Test"
 author: "Jose Tamez"
 date: "2022-10-04"
 output:
-  word_document: 
-    reference_docx: WordStyle_FRESA.docx
-    toc: yes
-    fig_caption: yes
   html_document: 
     toc: yes
     fig_caption: yes
     number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
 editor_options:
   chunk_output_type: console
 ---
@@ -237,7 +237,7 @@ pander::pander(bpDecorU$accc)
 pander::pander(bpDecorU$aucs)
 pander::pander(bpDecorU$berror)
 
-### Here we compute the probability that the unsupervised decorrelation ROC is superior to the RAW ROC. 
+### Here we compute the probability that the blind decorrelation ROC is superior to the RAW ROC. 
 pander::pander(roc.test(bpDecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor))
 par(op)
 
@@ -258,13 +258,13 @@ par(mfrow=c(1,3))
 bpraw <- predictionStats_binary(cbind(testSet$class,predict(bm,testSet)),"BSWiMS RAW",cex=0.60)
 
 #bmd <- BSWiMS.model(class~.,deTrain,NumberofRepeats = 20)
-bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"BSWiMS Outcome-Driven Decor",cex=0.60)
+bpdecor <- predictionStats_binary(cbind(deTest$class,predict(bmd,deTest)),"Outcome-Driven Decorrelation",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecor$ROC.analysis$roc.predictor))
 
 
 #bmdU <- BSWiMS.model(class~.,deTrainU,NumberofRepeats = 20)
-bpdecorU <- predictionStats_binary(cbind(deTest$class,predict(bmdU,deTestU)),"BSWiMS Unsupervised Decor",cex=0.60)
+bpdecorU <- predictionStats_binary(cbind(deTest$class,predict(bmdU,deTestU)),"Blind Decorrrelation",cex=0.60)
 
 pander::pander(roc.test(bpraw$ROC.analysis$roc.predictor,bpdecorU$ROC.analysis$roc.predictor))
 
@@ -341,7 +341,7 @@ plot(fc, gr,
      main="Outcome-Driven Decorrelation")
 
 
-### The Unsupervised Decorrelation
+### The Blind Decorrelation
 
 pander::pander(nrow(bmdU$bagging$formulaNetwork))
 
@@ -369,7 +369,7 @@ plot(fc, gr,
      vertex.size=20*cmax,
      vertex.label.cex=0.5,
      vertex.label.dist=0,
-     main="Unsupervised Decorrelation")
+     main="Blind Decorrelation")
 
 ```
 
@@ -396,7 +396,7 @@ rawnames <- rownames(smOriginal$coefficients)
 smDecor <- summary(bmd)
 decornames <- rownames(smDecor$coefficients)
 
-### From Unsupervised Decorrelation
+### From Blind Decorrelation
 smDecorU <- summary(bmdU)
 decornamesU <- rownames(smDecorU$coefficients)
 
@@ -417,7 +417,7 @@ allDevar <- str_remove(allDevar,"Ba_")
 allDevar <- unique(allDevar)
 
 
-# The analysis of the unsupervised decorrelation
+# The analysis of the blind decorrelation
 
 dcU <- getDerivedCoefficients(deTrainU)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
@@ -504,9 +504,9 @@ decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
 pander::pander(decorCoeff)
 ```
 
-## Differences Between Unsupervised vs Outcome-Drive Decorrelation
+## Differences Between Blind vs Outcome-Drive Decorrelation
 
-In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the unsupervised decorrelated transformation
+In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation vs the blind decorrelated transformation
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 par(op)
@@ -541,13 +541,13 @@ x1 <- unn[get_De_names]
 x2 <- unnU[get_De_namesU]
 X3 <- x1[!(get_De_names %in% get_De_namesU)]
 X4 <- x2[!(get_De_namesU %in% get_De_names)]
-vioplot(x1, x2, X3,X4, names=c("Outcome Driven", "Unsupervised","Not in Un","Not in Outcome-Driven"),ylab="Z IDI",
+vioplot(x1, x2, X3,X4, names=c("Outcome Driven", "Blind","Not in Blind","Not in Outcome-Driven"),ylab="Z IDI",
    col="gold")
 title("Violin Plots of Unaltered-Basis")
 
 sameFeatures <- get_De_names[get_De_names %in% get_De_namesU]
 pander::pander(as.matrix(unn[sameFeatures]))
-## The features by Outcome Drive not in Unsupervised
+## The features by Outcome Drive not in Blind
 pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
 
 ## The features not in outcome driven
