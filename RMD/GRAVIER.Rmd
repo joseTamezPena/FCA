@@ -1,0 +1,307 @@
+---
+title: "GRAVIER"
+author: "Jose Tamez"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+```
+
+# GRAVIER
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+library(igraph)
+op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
+
+```
+
+## The Data
+
+
+```{r}
+data('gravier', package = 'datamicroarray')
+table(gravier$y)
+
+gravierset <- as.data.frame(cbind(V1=1*(gravier$y=="poor"),gravier$x))
+gravier <- NULL
+table(gravierset$V1)
+#hist(gravierset$g2E09)
+#hist(gravierset$g1int354)
+
+TrainFraction <- 0.75
+```
+
+## The Raw Analysis
+
+### Cross Validation
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cvBSWiMSRaw <- randomCV(gravierset,
+                "V1",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "Pro",
+                trainFraction = TrainFraction,
+                repetitions = 50,
+                loops=1,
+)
+bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS Raw",cex=0.90)
+par(op)
+
+```
+
+
+### Bagging CV
+
+```{r}
+
+bagg <- baggedModel(cvBSWiMSRaw$formula.list,
+                    data=gravierset,
+                    type="LOGIT");
+sm <- summary(bagg$bagged.model)
+pander::pander(sm$coefficients)
+pander::pander(cvBSWiMSRaw$jaccard$Jaccard.SM)
+pander::pander(cvBSWiMSRaw$jaccard$averageLength)
+fs <- bagg$frequencyTable
+fs <- fs[order(-fs)]
+barplot(fs[1:20],las=2,main="Selected Features",cex.names = 0.5)
+
+
+```
+
+
+
+### The formula network
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+fnet <- bagg$formulaNetwork
+
+cmax <- apply(fnet,2,max)
+cnames <- names(cmax[cmax>=0.3])
+cmax <- cmax[cnames]
+
+VertexSize <- 100*sqrt(abs(sm$coefficients$Delta.AUC))
+names(VertexSize) <- rownames(sm$coefficients)
+VertexSize <- VertexSize[cnames]
+
+
+adma <- fnet[cnames,cnames]
+
+adma[adma<0.10] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     edge.width=10*E(gr)$weight,
+     vertex.size=1*VertexSize,
+     vertex.label.cex=0.75,
+     vertex.label.dist=0,
+     main="Gravier Prognosis")
+par(op)
+
+```
+
+
+## Decorrelation Analysis
+
+```{r}
+deGRAVIER <- GDSTMDecorrelation(gravierset,Outcome="V1",thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+sum(str_detect(colnames(deGRAVIER),"De_"))
+sum(str_detect(colnames(deGRAVIER),"Ba_"))
+
+```
+
+
+```{r}
+cvBSWiMSDeCor2 <- randomCV(gravierset,
+                "V1",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(Outcome="V1",thr=0.80,skipRelaxed=FALSE),
+                loops=1,
+)
+bpde <- predictionStats_binary(cvBSWiMSDeCor2$medianTest,"BSWiMS De",cex=0.90)
+par(op)
+
+barplot(cvBSWiMSDeCor2$featureFrequency[1:20],las=2,cex.names=0.7)
+
+
+cvBSWiMSDeCor <- randomCV(deGRAVIER,
+                "V1",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= BSWiMS.model,
+                loops=1,
+)
+bpde <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS De",cex=0.90)
+par(op)
+
+barplot(cvBSWiMSDeCor$featureFrequency[1:20],las=2,cex.names=0.7)
+pander::pander(roc.test(bpde$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
+```
+
+
+### Bagging CV
+
+```{r}
+
+bagg <- baggedModel(cvBSWiMSDeCor$formula.list,
+                    data=deGRAVIER,
+                    type="LOGIT");
+sm <- summary(bagg$bagged.model)
+pander::pander(sm$coefficients)
+pander::pander(cvBSWiMSRaw$jaccard$Jaccard.SM)
+pander::pander(cvBSWiMSRaw$jaccard$averageLength)
+fs <- bagg$frequencyTable
+fs <- fs[order(-fs)]
+barplot(fs[1:20],las=2,main="Selected Features",cex.names = 0.5)
+
+
+```
+
+
+
+### The formula network
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+fnet <- bagg$formulaNetwork
+
+cmax <- apply(fnet,2,max)
+cnames <- names(cmax[cmax>=0.30])
+cmax <- cmax[cnames]
+
+VertexSize <- 100*sqrt(abs(sm$coefficients$Delta.AUC))
+names(VertexSize) <- rownames(sm$coefficients)
+VertexSize <- VertexSize[cnames]
+
+
+adma <- fnet[cnames,cnames]
+
+adma[adma<0.1] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     edge.width=10*E(gr)$weight,
+     vertex.size=1*VertexSize,
+     vertex.label.cex=0.75,
+     vertex.label.dist=0,
+     main="Gravier Prognosis")
+par(op)
+
+```
+
+
+### The Final Table
+
+I'll create a table subset of the logistic model from the Outcome-Driven decorrelated data.
+
+The table will have:
+
+1.  The top associated features described by the feature network, as well as, and the new features.
+
+    1.  For Decorrelated features it will provide the decorrelation formula
+
+2.  cluster labels
+
+    1.  The label of cluster as found by the clustering procedure
+
+3.  The feature coefficient
+
+4.  The feature Odd ratios and their corresponding 95%CI
+
+```{r results = "asis"}
+
+decornames <- rownames(sm$coefficients)
+
+decornames <- decornames[sm$coefficients$Frequency > 0.25]
+
+dc <- getDerivedCoefficients(deGRAVIER)
+### 2a Get only the ones that were decorrelated by the decorrelation-based model
+deNames_in_dc <- decornames[decornames %in% names(dc)]
+selectedlist <- dc[deNames_in_dc]
+theDeFormulas <- selectedlist
+
+
+## The features in top cluster
+clusterFeatures <- fc$names
+## The new features 
+
+tablefinal <- sm$coefficients[clusterFeatures,
+                                    c("Estimate",
+                                     "lower",
+                                     "OR",
+                                     "upper",
+                                     "full.AUC",
+                                     "Delta.AUC",
+                                     "z.IDI",
+                                     "Frequency")]
+
+cluster <- fc$membership
+names(cluster) <- fc$names
+tablefinal$cluster <- cluster[rownames(tablefinal)]
+tablefinal$cluster[is.na(tablefinal$cluster)] <- "D"
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+tablefinal$DecorFormula <- deFromula[rownames(tablefinal)]
+tablefinal <- tablefinal[order(-tablefinal$z.IDI),]
+tablefinal <- tablefinal[order(as.numeric(tablefinal$cluster)),]
+pander::pander(tablefinal)
+
+```
+
+
+#### Saving all the generated data
+
+```{r}
+save.image("~/GitHub/FCA/GRAVIERDemo.RData")
+
+```
+

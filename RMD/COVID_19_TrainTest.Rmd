@@ -1,0 +1,633 @@
+---
+title: "Decorrelation-Based Feature Discovery: COVID_19"
+author: "Jose Tamez"
+date: "2022-10-02"
+output:
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+
+```
+
+# Effect of GDSTM-Based Decorrelation on Feature Discovery
+
+Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
+
+1.  To improve model performance by uncovering the hidden information between correlated features.
+
+2.  To simplify the interpretation of the machine learning models.
+
+This demo will use:
+
+-   *FRESA.CAD::GDSTMDecorrelation()*. For Decorrelation of Multidimensional data sets
+
+    -   *FRESA.CAD::getDerivedCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
+
+-   *FRESA.CAD::randomCV()* For the cross-validation of the Machine Learning models
+
+-   *FRESA.CAD::BSWiMS.model()*. For the generation of bootstrapped logistic models
+
+    -   *FRESA.CAD::summary()*. For the summary description of the BSWiMS model
+
+-   *FRESA.CAD::predictionStats_binary()*. For describing the performance of the model
+
+-   *heatmap.2()*. For displaying the correlation matrix
+
+-   *igraph::graph_from_adjacency_matrix()*. For the display of the network of BSWiMS formulas
+
+-   *vioplot::vioplot()*. For the display of the z-distribution of significant features.
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+library(vioplot)
+library(igraph)
+
+op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
+
+```
+
+## Material and Methods
+
+### Signed Log Transform
+
+The function will be used to transform all the continuous features of the data
+
+```{r}
+signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
+
+```
+
+## Data: The COVID_19 Data-Set
+
+The data to process is described in:
+
+Sakdipat Ontoum. (2022). <i>Saliva Testing Dataset</i> [Data set]. Kaggle. https://doi.org/10.34740/KAGGLE/DSV/4127956
+
+Saliva Testing Dataset
+
+<https://www.kaggle.com/datasets/kerneler/saliva-testing-dataset?select=COVID-19_MS_dataset_train.csv>
+
+
+
+I added a column to the data identifying the repeated experiments.
+
+```{r}
+
+COVID_19_MS <- read.csv("~/GitHub/FCA/Data/COVID-19_MS_dataset_train.csv", stringsAsFactors=TRUE)
+
+rownames(COVID_19_MS) <- paste(COVID_19_MS$Person_ID,
+                                             COVID_19_MS$Sample_ID,sep="_")
+
+COVID_19_MS$Person_ID <- NULL
+COVID_19_MS$Sample_ID <- NULL
+##The fraction of samples in the training set
+pander::pander(table(COVID_19_MS$PCR_result))
+COVID_19_MS$PCR_result <- 1*(COVID_19_MS$PCR_result =="pos")
+pander::pander(table(COVID_19_MS$PCR_result))
+trainFraction=0.65
+
+
+```
+
+
+
+### Training and Testing Sets
+
+We divided the data into training and testing sets.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+set.seed(2)
+caseSet <- subset(COVID_19_MS, PCR_result == 1)
+controlSet <- subset(COVID_19_MS, PCR_result == 0)
+caseTrainSize <- nrow(caseSet)*trainFraction;
+controlTrainSize <- nrow(controlSet)*trainFraction;
+sampleCaseTrain <- sample(nrow(caseSet),caseTrainSize)
+sampleControlTrain <- sample(nrow(controlSet),controlTrainSize)
+trainSet <- rbind(caseSet[sampleCaseTrain,], controlSet[sampleControlTrain,])
+testSet <-  rbind(caseSet[-sampleCaseTrain,],controlSet[-sampleControlTrain,])
+pander::pander(table(trainSet$PCR_result))
+pander::pander(table(testSet$PCR_result))
+
+
+```
+
+#### Decorrelation: Training and Testing Sets Creation
+
+I compute a decorrelated version of the training and testing sets using the *GDSTMDecorrelation()* function of FRESA.CAD. The first decorrelation will be driven by features associated with the outcome. The second decorrelation will find the GDSTM without the outcome restriction.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+## The GDSTM transformation driven by the Outcome
+deTrain <- GDSTMDecorrelation(trainSet,Outcome="PCR_result",thr=0.8,verbose = TRUE)
+deTest <- predictDecorrelate(deTrain,testSet)
+
+## The GDSTM transformation without outcome
+deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
+deTestU <- predictDecorrelate(deTrainU,testSet)
+
+```
+
+#### Correlation Matrix of the Decorrelated Test Data
+
+The heat map of the testing set.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cormat <- cor(deTest,method="spearman")
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+                  scale = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(5)),
+                  main = "Test Set Correlation after GDSTM",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+```
+
+### Holdout Cross-Validation
+
+Before doing the feature analysis. I'll explore BSWiMS modeling using the Holdout cross validation method of FRESA.CAD. The purpose of the cross-validation is to observe and estimate the performance gain of decorrelation.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 9.0}
+par(op)
+par(mfrow=c(1,3))
+
+## The Raw validation
+cvBSWiMSRaw <- randomCV(COVID_19_MS,
+                "PCR_result",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "Pro",
+                trainFraction = trainFraction,
+                repetitions = 10
+)
+
+bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.60)
+pander::pander(bpraw$CM.analysis$tab)
+pander::pander(bpraw$accc)
+pander::pander(bpraw$aucs)
+pander::pander(bpraw$berror)
+
+## The validation with Outcome-driven Decorrelation
+cvBSWiMSDeCor <- randomCV(COVID_19_MS,
+                "PCR_result",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(Outcome="PCR_result",thr=0.8)
+)
+
+bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
+pander::pander(bpDecor$CM.analysis$tab)
+pander::pander(bpDecor$accc)
+pander::pander(bpDecor$aucs)
+pander::pander(bpDecor$berror)
+
+### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
+pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
+### Testing improving proability
+iprob <- .Call("improveProbCpp",cvBSWiMSRaw$medianTest[,2],
+               cvBSWiMSDeCor$medianTest[,2],
+               cvBSWiMSRaw$medianTest[,1]);
+pander::pander(iprob)
+### Testing improving accuracy
+testRaw <- (cvBSWiMSRaw$medianTest[,1]-cvBSWiMSRaw$medianTest[,2])<0.5
+testDecor <- (cvBSWiMSDeCor$medianTest[,1]-cvBSWiMSDeCor$medianTest[,2])<0.5
+pander::pander(mcnemar.test(testRaw,testDecor))
+
+## The validation of Decorrelation without the outcome restriction
+cvBSWiMSDeCorU <- randomCV(COVID_19_MS,
+                "PCR_result",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(thr=0.8)
+)
+
+bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"BSWiMS Data Driven GDSTM",cex=0.60)
+pander::pander(bpDecorU$CM.analysis$tab)
+pander::pander(bpDecorU$accc)
+pander::pander(bpDecorU$aucs)
+pander::pander(bpDecorU$berror)
+
+### Here we compute the probability that the blind decorrelation ROC is superior to the RAW ROC. 
+
+pander::pander(roc.test(bpDecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+par(op)
+
+## Testing probability improvement
+iprob <- .Call("improveProbCpp",cvBSWiMSRaw$medianTest[,2],cvBSWiMSDeCorU$medianTest[,2],cvBSWiMSRaw$medianTest[,1]);
+pander::pander(iprob)
+
+## Testing accuracy improvement
+testDecorU <- (cvBSWiMSDeCorU$medianTest[,1]-cvBSWiMSDeCorU$medianTest[,2])<0.5
+pander::pander(mcnemar.test(testRaw,testDecorU))
+
+
+```
+
+## The Raw Model *vs.* the Decorrelated-Based Model
+
+After demonstrating that decorrelation is able to improve BSWiMS model performance, I'll focus is showcasing the ability to discover new features associated with the outcome.
+
+First, I'll compute the BSWiMS models for the original data, and for the decorrelated data-set. The model estimation will be done using the training set and tested on the holdout test set, and repeated 10 times. After that, I'll compare the statistical difference of both ROC curves.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 9.0}
+par(op)
+par(mfrow=c(1,3))
+
+bm <- BSWiMS.model(PCR_result~.,trainSet,NumberofRepeats = 5)
+bpraw <- predictionStats_binary(cbind(testSet$PCR_result,predict(bm,testSet)),"BSWiMS RAW",cex=0.60)
+
+bmd <- BSWiMS.model(PCR_result~.,deTrain,NumberofRepeats = 5)
+bpdecor <- predictionStats_binary(cbind(deTest$PCR_result,predict(bmd,deTest)),"Outcome-Driven Decorrelation",cex=0.60)
+
+## Comparing the two ROC curves
+pander::pander(roc.test(bpdecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+## Comparing the test accuracy
+testRaw <- (testSet$PCR_result-predict(bm,testSet))<0.5
+testDecor <- (deTest$PCR_result-predict(bmd,deTest))<0.5
+pander::pander(mcnemar.test(testRaw,testDecor))
+
+
+bmdU <- BSWiMS.model(PCR_result~.,deTrainU,NumberofRepeats = 5)
+bpdecorU <- predictionStats_binary(cbind(deTest$PCR_result,predict(bmdU,deTestU)),"Blind Decorrelation",cex=0.60)
+
+## Comparing the test curves
+pander::pander(roc.test(bpdecorU$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+## Comparing the accuracy
+testDecorU <- (deTestU$PCR_result-predict(bmdU,deTestU))<0.5
+pander::pander(mcnemar.test(testRaw,testDecorU))
+
+par(op)
+
+```
+
+## The Feature Associations
+
+I'll print the graph showing the association between features. Each feature cluster represents a logistic regression formula (formula nugget) discovered by the BSWiMS method. The figure will plot:
+
+-   Raw formula network
+
+-   Outcome-driven network
+
+-   Blind network
+
+The plots will show only formula networks with more than 50% of occurrence and 25% of feature to feature association.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.0, fig.width= 9.0}
+par(op)
+par(mfrow=c(1,3))
+### The raw model
+
+pander::pander(nrow(bm$bagging$formulaNetwork))
+
+
+cmax <- apply(bm$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
+adma <- bm$bagging$formulaNetwork[cnames,cnames]
+
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Original Feature Association")
+
+
+
+### The Outcome Driven Model
+
+pander::pander(nrow(bmd$bagging$formulaNetwork))
+
+
+cmax <- apply(bmd$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+outcomeNames <- cnames
+
+cmax <- cmax[cmax>=0.5]
+adma <- bmd$bagging$formulaNetwork[cnames,cnames]
+
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+clusterOutcome <- fc
+clusterOutcome$names <- outcomeNames
+
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Outcome-Driven Decorrelation")
+
+
+### The Blind Decorrelation
+
+pander::pander(nrow(bmdU$bagging$formulaNetwork))
+
+
+cmax <- apply(bmdU$bagging$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.5])
+cmax <- cmax[cmax>=0.5]
+adma <- bmdU$bagging$formulaNetwork[cnames,cnames]
+
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.25] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     vertex.size=20*cmax,
+     vertex.label.cex=0.5,
+     vertex.label.dist=0,
+     main="Blind Decorrelation")
+
+```
+
+### Feature Analysis of Models
+
+The analysis of the features required to predict the outcome will use the following:
+
+1.  Analysis of the BSWiMS bagged model using the summary function.
+
+2.  Analysis of the sparse GDSMT
+
+3.  Analysis of the univariate association of the model features of both models
+
+4.  Report the new features not found by the Original data analysis
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,1))
+## 1 Get the Model Features
+smOriginal <- summary(bm)
+rawnames <- rownames(smOriginal$coefficients)
+
+### From Drived Decorrelation
+smDecor <- summary(bmd)
+decornames <- rownames(smDecor$coefficients)
+
+### From Blind Decorrelation
+smDecorU <- summary(bmdU)
+decornamesU <- rownames(smDecorU$coefficients)
+
+
+
+## 2 Get the decorrelation matrix formulas
+dc <- getDerivedCoefficients(deTrain)
+### 2a Get only the ones that were decorrelated by the decorrelation-based model
+deNames_in_dc <- decornames[decornames %in% names(dc)]
+selectedlist <- dc[deNames_in_dc]
+theDeFormulas <- selectedlist
+pander::pander(selectedlist)
+names(selectedlist) <- NULL
+### 2b Get the the names of the original features
+
+allDevar <- unique(c(names(unlist(selectedlist)),decornames))
+allDevar <- allDevar[!str_detect(allDevar,"De_")]
+allDevar <- str_remove(allDevar,"Ba_")
+allDevar <- unique(allDevar)
+
+
+# The analysis of the blind decorrelation
+
+dcU <- getDerivedCoefficients(deTrainU)
+### 2a Get only the ones that were decorrelated by the decorrelation-based model
+deNames_in_dcU <- decornamesU[decornamesU %in% names(dcU)]
+selectedlistU <- dcU[deNames_in_dcU]
+pander::pander(selectedlistU)
+names(selectedlistU) <- NULL
+### 2b Get the the names of the original features
+
+allDevarU <- unique(c(names(unlist(selectedlistU)),decornamesU))
+allDevarU <- allDevarU[!str_detect(allDevarU,"De_")]
+allDevarU <- str_remove(allDevarU,"Ba_")
+allDevarU <- unique(allDevarU)
+
+pander::pander(c(length(rawnames),length(decornames),length(decornamesU)))
+pander::pander(c(length(rawnames),length(allDevar),length(allDevarU)))
+
+
+### 2c Get only the new feautres not found in the original analysis
+dvar <- allDevar[!(allDevar %in% rawnames)] 
+
+### 2d Get the decorrelated variables that have new features
+newvars <- character();
+for (cvar in deNames_in_dc)
+{
+  lvar <- dc[cvar]
+  names(lvar) <- NULL
+  lvar <- names(unlist(lvar))
+  if (length(lvar[lvar %in% dvar]) > 0)
+  {
+     newvars <- append(newvars,cvar)
+  }
+}
+
+## 3 Here is the univariate z values of the orignal set
+#pander::pander(bm$univariate[dvar,])
+## 4 Here is the univariate z values of the decorrelated set
+#pander::pander(bmd$univariate[newvars,])
+
+## 4a The scater plot of the decorrelated vs original Univariate values
+
+zvalueNew <- bmd$univariate[newvars,]
+rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"De_")
+rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"Ba_")
+
+zvaluePrePost <- bm$univariate[rownames(zvalueNew),c(1,3)]
+zvaluePrePost$Name <- NULL
+zvaluePrePost$NewZ <- zvalueNew[rownames(zvaluePrePost),"ZUni"]
+pander::pander(zvaluePrePost)
+plot(zvaluePrePost,
+     xlim=c(-0.5,6.5),
+     ylim=c(0,7),
+     xlab="Original Z",
+     ylab="Decorrelated Z",
+     main="Unviariate IDI Z Values",
+     pch=3,cex=0.5,
+     col="red")
+abline(v=1.96,col="blue")
+abline(h=1.96,col="blue")
+text(zvaluePrePost$ZUni,zvaluePrePost$NewZ,rownames(zvaluePrePost),srt=65,cex=0.75)
+
+
+```
+
+### The Summary of the Decorrelated-Based Model
+
+Here I will print the summary statistics of the Logistic models found by BSWiMS, using the original and transformed dataset. After that, I will show the characteristics of the features not found by the original analysis.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+pander::pander(smOriginal$coefficients)
+
+pander::pander(smDecor$coefficients)
+
+pander::pander(smDecorU$coefficients)
+
+## Let focus on the new features
+
+decorCoeff <- smDecor$coefficients[newvars,];
+ncoef <- dc[newvars]
+cnames <- lapply(ncoef,names)
+names(cnames) <- NULL;
+decorCoeff$Elements <- lapply(cnames,paste,collapse="+")
+pander::pander(decorCoeff)
+```
+
+## Differences Between Blind *vs.* Outcome-Driven Decorrelation
+
+In this section I will show the differences in unaltered basis vectors between the Outcome driven Transformation *vs.* the blind decorrelated transformation
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,1))
+
+
+smDecorU <- summary(bmdU)
+decornamesU <- rownames(smDecorU$coefficients)
+
+get_De_names <- decornames[!str_detect(decornames,"De_")]
+get_De_namesU <- decornamesU[!str_detect(decornamesU,"De_")]
+
+unn <- bmd$univariate[,3]
+names(unn) <- rownames(bmd$univariate)
+pander::pander(as.matrix(unn[get_De_names]))
+pander::pander(summary(unn[get_De_names]))
+
+unnU <- bmdU$univariate[,3]
+names(unnU) <- rownames(bmdU$univariate)
+pander::pander(as.matrix(unnU[get_De_namesU]))
+pander::pander(summary(unnU[get_De_namesU]))
+#boxplot(unn[get_De_names],unnU[get_De_namesU],xlab=c("Method"),ylab="Z",main="Z Values of Basis Features")
+
+x1 <- unn[get_De_names]
+x2 <- unnU[get_De_namesU]
+X3 <- x1[!(get_De_names %in% get_De_namesU)]
+X4 <- x2[!(get_De_namesU %in% get_De_names)]
+vioplot(x1, x2, X3,X4, 
+        names = c("Outcome-Driven", 
+                  "Blind",
+                  "Not in Blind",
+                  "Not in Outcome-Driven"),
+        ylab="Z IDI",
+   col="gold")
+title("Violin Plots of Unaltered-Basis")
+
+sameFeatures <- get_De_names[get_De_names %in% get_De_namesU]
+pander::pander(as.matrix(unn[sameFeatures]))
+## The features by Outcome Drive not in Blind
+pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
+
+## The features not in outcome driven
+pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
+```
+
+### The Final Table
+
+I'll create a table subset of the logistic model from the Outcome-Driven decorrelated data.
+
+The table will have:
+
+1.  The top associated features described by the feature network, as well as, and the new features.
+
+    1.  For Decorrelated features it will provide the decorrelation formula
+
+2.  Nugget labels
+
+    1.  The label of nugget as found by the clustering procedure
+
+3.  The feature coefficient
+
+4.  The feature Odd ratios and their corresponding 95%CI
+
+```{r}
+
+## The features in top nugget
+clusterFeatures <- clusterOutcome$names
+## The new features 
+discoveredFeatures <- newvars[zvaluePrePost$ZUni<1.96]
+
+tablefinal <- smDecor$coefficients[unique(c(clusterFeatures,discoveredFeatures)),
+                                   c("Estimate","lower","OR","upper","z.IDI")]
+
+nugget <- clusterOutcome$membership
+names(nugget) <- clusterOutcome$names
+tablefinal$Nugget <- nugget[rownames(tablefinal)]
+tablefinal$Nugget[is.na(tablefinal$Nugget)] <- "D"
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+tablefinal$DecorFormula <- deFromula[rownames(tablefinal)]
+pander::pander(tablefinal)
+
+```
+
+#### Saving all the generated data
+
+```{r}
+save.image("~/GitHub/FCA/COVID_19Demo.RData")
+
+```

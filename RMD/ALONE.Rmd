@@ -1,0 +1,91 @@
+---
+title: "ALONE"
+author: "Jose Tamez"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+```
+
+# ALONE
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+library(igraph)
+op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
+
+```
+
+## The Data
+
+
+```{r}
+data('alon', package = 'datamicroarray')
+table(alon$y)
+min(alon$x)
+
+alon$x <- apply(alon$x+1,2,log)
+
+alondataset <- as.data.frame(cbind(V1= 1*(alon$y == "n"),alon$x))
+alon <- NULL
+colnames(alondataset) <- str_replace_all(colnames(alondataset),"-","_")
+colnames(alondataset) <- str_replace_all(colnames(alondataset),"/","_")
+colnames(alondataset) <- paste("x",colnames(alondataset),sep="_")
+table(alondataset$x_V1)
+
+#hm <- heatMaps(data=alondataset,Outcome="x_V1",hCluster="col")
+TrainFraction <- 0.8
+```
+
+### Cross Validation
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cvBSWiMSRaw <- randomCV(alondataset,
+                "x_V1",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "Pro",
+                trainFraction = TrainFraction,
+                repetitions = 50,
+                loops=1,
+)
+bpde <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS Raw",cex=0.90)
+par(op)
+
+```
+
+```{r}
+cvBSWiMSDeCor <- randomCV(alondataset,
+                "x_V1",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(Outcome="x_V1",thr=0.80),
+                loops=1,
+)
+bpde <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS De",cex=0.90)
+par(op)
+
+```
+

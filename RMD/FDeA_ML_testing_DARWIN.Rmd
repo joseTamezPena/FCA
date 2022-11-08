@@ -102,7 +102,9 @@ namecode <- read.csv("~/GitHub/FCA/Data/DARWIN/Darnames.csv")
 ## Correlation Matrix of the DARWIN Data
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-cormat <- cor(DARWIN,method="spearman")
+cormat <- cor(DARWIN[,colnames(DARWIN)!="class"],method="spearman")
+cormat[is.na(cormat)] <- 0
+
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
                   scale = "none",
@@ -143,11 +145,11 @@ I compute a decorrelated version of the training and testing sets using the *GDS
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 ## The GDSTM transformation driven by the Outcome
-deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
+deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
 deTest <- predictDecorrelate(deTrain,testSet)
 
 ## The GDSTM transformation without outcome
-deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
+deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
 deTestU <- predictDecorrelate(deTrainU,testSet)
 
 ```
@@ -157,7 +159,8 @@ deTestU <- predictDecorrelate(deTrainU,testSet)
 The heat map of the testing set.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-cormat <- cor(deTest,method="spearman")
+cormat <- cor(deTest[,colnames(deTest)!="class"],method="spearman")
+cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
                   scale = "none",
@@ -203,7 +206,7 @@ cvBSWiMSDeCor <- randomCV(DARWIN,
                 fitmethod=BSWiMS.model,
                 filtermethod=NULL,
                 DECOR = TRUE,
-                DECOR.control=list(Outcome="class",thr=0.8)
+                DECOR.control=list(Outcome="class",thr=0.8,skipRelaxed=FALSE)
 )
 
 bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"Outcome-Driven GDSTM",cex=0.60)
@@ -233,7 +236,7 @@ cvBSWiMSDeCorU <- randomCV(DARWIN,
                 fitmethod=BSWiMS.model,
                 filtermethod=NULL,
                 DECOR = TRUE,
-                DECOR.control=list(thr=0.8)
+                DECOR.control=list(thr=0.8,skipRelaxed=FALSE)
 )
 
 bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"Blind Decorrelation",cex=0.60)
@@ -616,7 +619,14 @@ clusterFeatures <- clusterOutcome$names
 discoveredFeatures <- newvars[zvaluePrePost$ZUni<1.96]
 
 tablefinal <- smDecor$coefficients[unique(c(clusterFeatures,discoveredFeatures)),
-                                   c("Estimate","lower","OR","upper","z.IDI")]
+                                   c("Estimate",
+                                     "lower",
+                                     "OR",
+                                     "upper",
+                                     "full.AUC",
+                                     "Delta.AUC",
+                                     "z.IDI",
+                                     "Frequency")]
 
 nugget <- clusterOutcome$membership
 names(nugget) <- clusterOutcome$names

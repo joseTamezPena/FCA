@@ -1,0 +1,510 @@
+---
+title: "TADPOLE_MCI_Vs_AD"
+author: "Jose Tamez"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+```
+
+# TADPOLE and BSWiMS
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+library(igraph)
+op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
+
+```
+
+## The data set
+
+```{r}
+TADPOLE_D1_D2 <- read.csv("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2.csv")
+TADPOLE_D1_D2_Dict <- read.csv("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2_Dict.csv")
+TADPOLE_D1_D2_Dict_LR <- as.data.frame(read_excel("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2_Dict_LR.xlsx",sheet = "LeftRightFeatures"))
+
+
+rownames(TADPOLE_D1_D2_Dict) <- TADPOLE_D1_D2_Dict$FLDNAME
+
+```
+
+## Conditioning the data
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+# mm3 to mm
+isVolume <- c("Ventricles","Hippocampus","WholeBrain","Entorhinal","Fusiform","MidTemp","ICV",
+              TADPOLE_D1_D2_Dict$FLDNAME[str_detect(TADPOLE_D1_D2_Dict$TEXT,"Volume")]
+              )
+
+
+#TADPOLE_D1_D2[,isVolume] <- apply(TADPOLE_D1_D2[,isVolume],2,'^',(1/3))
+TADPOLE_D1_D2[,isVolume] <- TADPOLE_D1_D2[,isVolume]^(1/3)
+
+# mm2 to mm
+isArea <- TADPOLE_D1_D2_Dict$FLDNAME[str_detect(TADPOLE_D1_D2_Dict$TEXT,"Area")]
+TADPOLE_D1_D2[,isArea] <- sqrt(TADPOLE_D1_D2[,isArea])
+
+# Get only cross sectional measurements
+FreeSurfersetCross <- str_detect(colnames(TADPOLE_D1_D2),"UCSFFSX")
+
+# The subset of baseline measurements
+baselineTadpole <- subset(TADPOLE_D1_D2,VISCODE=="bl")
+table(baselineTadpole$DX)
+
+rownames(baselineTadpole) <- baselineTadpole$PTID
+
+
+validBaselineTadpole <- cbind(DX=baselineTadpole$DX,
+                                 AGE=baselineTadpole$AGE,
+                                 Gender=1*(baselineTadpole$PTGENDER=="Female"),
+                                 ADAS11=baselineTadpole$ADAS11,
+                                 ADAS13=baselineTadpole$ADAS13,
+                                 MMSE=baselineTadpole$MMSE,
+                                 RAVLT_immediate=baselineTadpole$RAVLT_immediate,
+                                 RAVLT_learning=baselineTadpole$RAVLT_learning,
+                                 RAVLT_forgetting=baselineTadpole$RAVLT_forgetting,
+                                 RAVLT_perc_forgetting=baselineTadpole$RAVLT_perc_forgetting,
+                                 FAQ=baselineTadpole$FAQ,
+                                 Ventricles=baselineTadpole$Ventricles,
+                                 Hippocampus=baselineTadpole$Hippocampus,
+                                 WholeBrain=baselineTadpole$WholeBrain,
+                                 Entorhinal=baselineTadpole$Entorhinal,
+                                 Fusiform=baselineTadpole$Fusiform,
+                                 MidTemp=baselineTadpole$MidTemp,
+                                 ICV=baselineTadpole$ICV,
+                                 baselineTadpole[,FreeSurfersetCross])
+
+
+LeftFields <- TADPOLE_D1_D2_Dict_LR$LFN
+names(LeftFields) <- LeftFields
+LeftFields <- LeftFields[LeftFields %in% colnames(validBaselineTadpole)]
+RightFields <- TADPOLE_D1_D2_Dict_LR$RFN
+names(RightFields) <- RightFields
+RightFields <- RightFields[RightFields %in% colnames(validBaselineTadpole)]
+
+## Normalize to ICV
+validBaselineTadpole$Ventricles=validBaselineTadpole$Ventricles/validBaselineTadpole$ICV
+validBaselineTadpole$Hippocampus=validBaselineTadpole$Hippocampus/validBaselineTadpole$ICV
+validBaselineTadpole$WholeBrain=validBaselineTadpole$WholeBrain/validBaselineTadpole$ICV
+validBaselineTadpole$Entorhinal=validBaselineTadpole$Entorhinal/validBaselineTadpole$ICV
+validBaselineTadpole$Fusiform=validBaselineTadpole$Fusiform/validBaselineTadpole$ICV
+validBaselineTadpole$MidTemp=validBaselineTadpole$MidTemp/validBaselineTadpole$ICV
+
+leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
+RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
+
+## get mean and relative difference 
+meanLeftRight <- (leftData + RightData)/2
+difLeftRight <- abs(leftData - RightData)
+reldifLeftRight <- difLeftRight/meanLeftRight
+colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
+colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
+colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
+
+
+validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
+                                               c(LeftFields,RightFields))]
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
+validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight)
+
+## Remove columns with too many NA more than %15 of NA
+nacount <- apply(is.na(validBaselineTadpole),2,sum)/nrow(validBaselineTadpole) < 0.15
+diagnose <- validBaselineTadpole$DX
+pander::pander(table(diagnose))
+validBaselineTadpole <- validBaselineTadpole[,nacount]
+## Remove character columns
+ischar <- sapply(validBaselineTadpole,class) == "character"
+validBaselineTadpole <- validBaselineTadpole[,!ischar]
+## Place back diagnose
+validBaselineTadpole$DX <- diagnose
+
+
+validBaselineTadpole <- validBaselineTadpole[complete.cases(validBaselineTadpole),]
+ischar <- sapply(validBaselineTadpole,class) == "character"
+validBaselineTadpole[,!ischar] <- sapply(validBaselineTadpole[,!ischar],as.numeric)
+
+colnames(validBaselineTadpole) <- str_remove_all(colnames(validBaselineTadpole),"_UCSFFSX_11_02_15_UCSFFSX51_08_01_16")
+colnames(validBaselineTadpole) <- str_replace_all(colnames(validBaselineTadpole)," ","_")
+validBaselineTadpole$LONISID <- NULL
+validBaselineTadpole$IMAGEUID <- NULL
+validBaselineTadpole$LONIUID <- NULL
+
+diagnose <- as.character(validBaselineTadpole$DX)
+validBaselineTadpole$DX <- diagnose
+pander::pander(table(validBaselineTadpole$DX))
+
+
+validDX <- c("NL","MCI","Dementia")
+
+validBaselineTadpole <- validBaselineTadpole[validBaselineTadpole$DX %in% validDX,]
+validBaselineTadpole$DX <- as.factor(validBaselineTadpole$DX)
+pander::pander(table(validBaselineTadpole$DX))
+
+
+
+```
+
+
+# Diagnosis MCI vs AD
+
+### the set
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+set.seed(2)
+TrainFraction <- 0.70;
+
+TADPOLECrossMRI <- subset(validBaselineTadpole,DX == "Dementia" | DX == "MCI")
+table(TADPOLECrossMRI$DX)
+
+TADPOLECrossMRI$DX <- 1*(as.character(TADPOLECrossMRI$DX) == "Dementia")
+table(TADPOLECrossMRI$DX)
+TADPOLECrossMRI$ADAS13 <- NULL
+TADPOLECrossMRI$ADAS11 <- NULL
+TADPOLECrossMRI$MMSE <- NULL
+TADPOLECrossMRI$RAVLT_immediate <- NULL
+TADPOLECrossMRI$RAVLT_learning <- NULL
+TADPOLECrossMRI$RAVLT_perc_forgetting <- NULL
+TADPOLECrossMRI$RAVLT_forgetting <- NULL
+TADPOLECrossMRI$FAQ <- NULL
+
+#TADPOLE_Cases <- subset(TADPOLECrossMRI,DX==1)
+#TADPOLE_Controls <- subset(TADPOLECrossMRI,DX==0)
+#set.seed(1)
+
+#trainCasesSet <- sample(nrow(TADPOLE_Cases),nrow(TADPOLE_Cases)*TrainFraction)
+#trainControlSet <- sample(nrow(TADPOLE_Controls),nrow(TADPOLE_Controls)*TrainFraction)
+
+#TADPOLE_DX_TRAIN <- rbind(TADPOLE_Cases[trainCasesSet,],TADPOLE_Controls[trainControlSet,])
+#TADPOLE_DX_TEST <- TADPOLECrossMRI[!(rownames(TADPOLECrossMRI) %in% rownames(TADPOLE_DX_TRAIN)),]
+#table(TADPOLE_DX_TEST$DX)
+
+#par(op)
+
+```
+
+
+### Learning
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+cvBSWiMSRaw <- randomCV(TADPOLECrossMRI,
+                "DX",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "Pro",
+                trainFraction = TrainFraction,
+                repetitions = 100,
+                loops=1,
+)
+bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.90)
+par(op)
+
+bagg <- baggedModel(cvBSWiMSRaw$formula.list,
+                    data=TADPOLECrossMRI,
+                    type="LOGIT");
+sm <- summary(bagg$bagged.model)
+pander::pander(sm$coefficients)
+pander::pander(cvBSWiMSRaw$jaccard$Jaccard.SM)
+pander::pander(cvBSWiMSRaw$jaccard$averageLength)
+fs <- bagg$frequencyTable
+barplot(fs[order(-fs)],las=2,main="Selected Features",cex.names = 0.5)
+
+
+#bDXml <- BSWiMS.model(DX~.,TADPOLE_DX_TRAIN,NumberofRepeats = 20)
+#pander::pander(bDXml$bagging$Jaccard.SM)
+
+#fs <- bDXml$bagging$frequencyTable
+#barplot(fs[order(-fs)],las=2,main="Selected Features",cex.names = 0.5)
+#sm <- summary(bDXml)
+#pander::pander(sm$coefficients)
+#pander::pander(bDXml$univariate[bDXml$selectedfeatures,])
+
+#prBinTest <- predictionStats_binary(cbind(TADPOLE_DX_TEST$DX,predict(bDXml,TADPOLE_DX_TEST)),"TEST: MCI vs Dementia")
+#par(op)
+#pander::pander(prBinTest$aucs)
+
+#pander::pander(prBinTest$accc)
+
+#pander::pander(prBinTest$berror)
+
+#pander::pander(prBinTest$sensitivity)
+#par(op)
+
+```
+
+
+
+### The formula network
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+#bagg <- bDXml$bagging
+fnet <- bagg$formulaNetwork
+
+cmax <- apply(fnet,2,max)
+cnames <- names(cmax[cmax>=0.35])
+cmax <- cmax[cnames]
+
+VertexSize <- 100*sqrt(abs(sm$coefficients$Delta.AUC))
+names(VertexSize) <- rownames(sm$coefficients)
+VertexSize <- VertexSize[cnames]
+
+
+adma <- fnet[cnames,cnames]
+
+adma[adma<0.20] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     edge.width=10*E(gr)$weight,
+     vertex.size=1*VertexSize,
+     vertex.label.cex=0.75,
+     vertex.label.dist=0,
+     main="MCI vs Dementia Diagnosis")
+par(op)
+
+```
+
+
+### MCI vs AD table
+```{r}
+
+clusterFeatures <- fc$names
+
+tableMCI_De <- sm$coefficients[clusterFeatures,
+                                   c("Estimate",
+                                     "lower",
+                                     "OR",
+                                     "upper",
+                                     "full.AUC",
+                                     "Delta.AUC",
+                                     "z.IDI",
+                                     "Frequency")]
+
+nugget <- fc$membership
+names(nugget) <- clusterFeatures
+
+tableMCI_De$Cluster <- nugget[rownames(tableMCI_De)]
+
+rnames <- clusterFeatures[str_detect(clusterFeatures,"ST")]
+frnames <- rnames
+rnames <- str_replace_all(rnames,"M_","")
+rnames <- str_replace_all(rnames,"RD_","")
+description <- character()
+
+for (ddet in c(1:length(rnames)))
+{
+  description <- c(description,TADPOLE_D1_D2_Dict$TEXT[str_detect(TADPOLE_D1_D2_Dict$FLDNAME,rnames[ddet])][1])
+}
+names(description) <- frnames
+
+tableMCI_De$Description <- description[rownames(tableMCI_De)]
+tableMCI_De <- tableMCI_De[order(-tableMCI_De$z.IDI),]
+tableMCI_De <- tableMCI_De[order(tableMCI_De$Cluster),]
+pander::pander(tableMCI_De)
+
+
+```
+
+
+## Decorrelating the sets
+
+```{r}
+
+NormalData <- subset(validBaselineTadpole,DX=="NL")
+NormalData$ADAS13 <- NULL
+NormalData$ADAS11 <- NULL
+NormalData$MMSE <- NULL
+NormalData$RAVLT_immediate <- NULL
+NormalData$RAVLT_learning <- NULL
+NormalData$RAVLT_perc_forgetting <- NULL
+NormalData$RAVLT_forgetting <- NULL
+NormalData$FAQ <- NULL
+
+
+TADPOLE_DX_NLD <- GDSTMDecorrelation(NormalData,Outcome="DX",
+                                        thr=0.8,
+                                        verbose = TRUE,
+                                     skipRelaxed=FALSE)
+
+
+#TADPOLE_DX_TRAIND <-  predictDecorrelate(TADPOLE_DX_NLD,TADPOLE_DX_TRAIN)
+#TADPOLE_DX_TESTD <-  predictDecorrelate(TADPOLE_DX_NLD,TADPOLE_DX_TEST)
+TADPOLECrossMRID <- predictDecorrelate(TADPOLE_DX_NLD,TADPOLECrossMRI)
+```
+
+### Decorrelated ML
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+cvBSWiMSDe <- randomCV(TADPOLECrossMRID,
+                "DX",
+                fittingFunction= BSWiMS.model,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                loops=1,
+)
+bpde <- predictionStats_binary(cvBSWiMSDe$medianTest,"BSWiMS De",cex=0.90)
+par(op)
+
+bagg <- baggedModel(cvBSWiMSDe$formula.list,
+                    data=TADPOLECrossMRID,
+                    type="LOGIT");
+sm <- summary(bagg$bagged.model)
+pander::pander(sm$coefficients)
+pander::pander(cvBSWiMSDe$jaccard$Jaccard.SM)
+pander::pander(cvBSWiMSDe$jaccard$averageLength)
+fs <- bagg$frequencyTable
+barplot(fs[order(-fs)],las=2,main="Selected Features",cex.names = 0.5)
+
+
+#bDXmlD <- BSWiMS.model(DX~.,TADPOLE_DX_TRAIND,NumberofRepeats = 20)
+#pander::pander(bDXmlD$bagging$Jaccard.SM)
+
+
+#sm <- summary(bDXmlD)
+#pander::pander(sm$coefficients)
+#pander::pander(bDXmlD$univariate[bDXmlD$selectedfeatures,])
+
+#prBin <- predictionStats_binary(cbind(TADPOLE_DX_TESTD$DX,predict(bDXmlD,TADPOLE_DX_TESTD)),"MCI vs Dementia")
+#pander::pander(prBin$aucs)
+#pander::pander(prBin$accc)
+#pander::pander(prBin$berror)
+#pander::pander(prBin$sensitivity)
+#par(op)
+
+#pander::pander(roc.test(prBin$ROC.analysis$roc.predictor,prBinTest$ROC.analysis$roc.predictor,alternative = "greater"))
+
+pander::pander(roc.test(bpde$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
+```
+
+
+### The formula network
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+#bagg <- bDXmlD$bagging;
+cmax <- apply(bagg$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.35])
+cmax <- cmax[cnames]
+
+adma <- bagg$formulaNetwork[cnames,cnames]
+
+adma[adma<0.20] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+VertexSize <- 100*sqrt(abs(sm$coefficients$Delta.AUC))
+names(VertexSize) <- rownames(sm$coefficients)
+VertexSize <- VertexSize[cnames]
+
+fc <- cluster_optimal(gr)
+plot(fc, gr,
+     edge.width=10*E(gr)$weight,
+     vertex.size=VertexSize,
+     vertex.label.cex=0.75,
+     vertex.label.dist=0,
+     main="MCI vs Dementia Diagnosis")
+par(op)
+
+```
+
+
+### Decorrelated MCI vs AD table
+```{r}
+
+clusterFeatures <- fc$names
+
+tableMCI_DeD <- sm$coefficients[clusterFeatures,
+                                   c("Estimate",
+                                     "lower",
+                                     "OR",
+                                     "upper",
+                                     "full.AUC",
+                                     "Delta.AUC",
+                                     "z.IDI",
+                                     "Frequency")]
+
+nugget <- fc$membership
+names(nugget) <- clusterFeatures
+
+tableMCI_DeD$Cluster <- nugget[rownames(tableMCI_DeD)]
+
+rnames <- clusterFeatures[str_detect(clusterFeatures,"ST")]
+frnames <- rnames
+rnames <- str_replace_all(rnames,"M_","")
+rnames <- str_replace_all(rnames,"RD_","")
+rnames <- str_replace_all(rnames,"Ba_","")
+rnames <- str_replace_all(rnames,"De_","")
+description <- character()
+
+for (ddet in c(1:length(rnames)))
+{
+  description <- c(description,TADPOLE_D1_D2_Dict$TEXT[str_detect(TADPOLE_D1_D2_Dict$FLDNAME,rnames[ddet])][1])
+}
+names(description) <- frnames
+
+tableMCI_DeD$Description <- description[rownames(tableMCI_DeD)]
+
+
+
+## Getting the decorrelation formula
+dc <- getDerivedCoefficients(TADPOLE_DX_NLD)
+decornames <- rownames(sm$coefficients)
+
+deNames_in_dc <- decornames[decornames %in% names(dc)]
+theDeFormulas <- dc[deNames_in_dc]
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+
+tableMCI_DeD$DecorFormula <- deFromula[rownames(tableMCI_DeD)]
+
+
+tableMCI_DeD <- tableMCI_DeD[order(-tableMCI_DeD$z.IDI),]
+tableMCI_DeD <- tableMCI_DeD[order(tableMCI_DeD$Cluster),]
+
+pander::pander(tableMCI_DeD)
+
+
+```
