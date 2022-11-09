@@ -115,10 +115,10 @@ SalivaThermal_set3$Ct <- NULL
 SalivaThermal_Avg <- (SalivaThermal_set1 + SalivaThermal_set2 + SalivaThermal_set3)/3
 
 SalivaThermal_d1 <- SalivaThermal_Avg[,-1] - SalivaThermal_Avg[,c(1:ncol(SalivaThermal_Avg)-1)]
-SalivaThermal_d1[,ncol(SalivaThermal_d1)] <- 0
+#SalivaThermal_d1[,ncol(SalivaThermal_d1)] <- 0
 #plot(apply(SalivaThermal_d1,2,mean))
-SalivaThermal_d2 <- SalivaThermal_d1[,c(1:ncol(SalivaThermal_d1)-1)] - SalivaThermal_d1[,-1]
-SalivaThermal_d2[,ncol(SalivaThermal_d2)] <- 0
+SalivaThermal_d2 <-  -SalivaThermal_d1[,c(1:ncol(SalivaThermal_d1)-1)] + SalivaThermal_d1[,-1]
+#SalivaThermal_d2[,ncol(SalivaThermal_d2)] <- 0
 #plot(apply(SalivaThermal_d2,2,mean))
 colnames(SalivaThermal_d2) <- paste("DD",colnames(SalivaThermal_d2),sep="_")
 colnames(SalivaThermal_d1) <- paste("D",colnames(SalivaThermal_d1),sep="_")
@@ -142,7 +142,9 @@ SalivaThermal_d2$class <- 1*(str_detect(rownames(SalivaThermal_d2),"P"))
 
 The heat map of the testing set.
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 7.0}
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 5.0, fig.width= 7.0}
+
+par(cex=0.6,cex.main=0.85,cex.axis=0.7)
 cormat <- cor(SalivaThermal_Avg[,colnames(SalivaThermal_Avg) != "class"],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
@@ -178,11 +180,41 @@ gplots::heatmap.2(abs(cormat),
 par(op)
 ```
 
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.5, fig.width= 5.0}
+GDSTM <- attr(deThermal,"GDSTM")
+
+gplots::heatmap.2(log(abs(GDSTM)+1),
+                  trace = "none",
+#                  scale = "none",
+                  mar = c(5,5),
+                  col=rev(heat.colors(5)),
+                  main = "Decorrelation matrix",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Beta",
+                  xlab="Output Feature", ylab="Input Feature")
+
+par(op)
+
+```
 
 ### Plots
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 7.0}
-par(mfrow=c(2,1))
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 5.0}
+par(mfrow=c(2,1),cex.axis=0.7,cex.main=0.8)
+
+varlist <- colnames(SalivaThermal_Avg)[!(colnames(SalivaThermal_Avg) %in% "class")]
+varlist <- cbind(varlist,varlist)
+
+univar <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           SalivaThermal_Avg,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
 
 cases <- subset(SalivaThermal_Avg,class==1)
 cases$class <- NULL
@@ -201,15 +233,33 @@ bpcases <- boxplot(cases,
 lines(apply(controls,2,mean),col="blue",lwd=3)
 title("Absorbance")
 legend("topright",legend=c("Cases", "Controls"),
-       col=c("red", "blue"), lty=1:1,lwd=c(1,3), cex=0.8)
+       col=c("red", "blue"), lty=1:1,lwd=c(1,3), cex=0.6)
 
 effectSize <- (apply(cases,2,mean)-apply(controls,2,mean))/apply(SalivaThermal_Avg[,str_detect(colnames(SalivaThermal_Avg),"V_")],2,sd)
 wavenumber=as.numeric(str_remove_all(names(effectSize),"V_"))
 
-bpdiff <- plot(wavenumber,effectSize,las=2,cex.axis=0.5,type="l",
-                                  ylab="Effect Size (Z)",
+aucvalue <- univar$orderframe$ROCAUC
+wavenumber=as.numeric(str_remove_all(rownames(univar$orderframe),"V_"))
+aucvalueRaw <- aucvalue[order(wavenumber)]
+wavenumberRaw <- wavenumber[order(wavenumber)]
+bpdiff <- plot(wavenumberRaw,aucvalueRaw,las=2,cex.axis=0.5,type="l",
+                                  ylab="ROC AUC",
                    xlab=expression("Wavenumber (cm)"^"-1"))
 title("Difference in Absorbance")
+
+
+
+varlist <- colnames(deThermal)[!(colnames(deThermal) %in% "class")]
+varlist <- cbind(varlist,varlist)
+
+univarDe <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           deThermal,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
 
 
 decorfeat <- colnames(deThermal)[str_detect(colnames(deThermal),"De_")]
@@ -236,21 +286,99 @@ bpcontrols <- boxplot(controls,col="blue",ylim=c(-0.075,0.075),outline = FALSE,b
 title("Decorrelated Absorbance")
 legend("topright",legend=c("Cases", "Controls"),
         fill=c("red", "blue"),
-       cex=0.8)
+       cex=0.6)
+
+
 
 
 
 effectSize <- (apply(cases,2,median)-apply(controls,2,median))/apply(reldecor[,str_detect(colnames(reldecor),"De_")],2,IQR)
 wavenumber=as.numeric(str_remove_all(names(effectSize),"De_V_"))
-bpdiff <- plot(x=wavenumber,y=effectSize,las=2,cex.axis=0.5,type="l",
-                                  ylab="Effect Size (Z)",
+
+aucvalue <- univarDe$orderframe$ROCAUC
+wavenumber=str_remove_all(rownames(univarDe$orderframe),"De_V_")
+wavenumber=str_remove_all(wavenumber,"Ba_V_")
+wavenumber=as.numeric(str_remove_all(wavenumber,"V_"))
+aucvalueDe <- aucvalue[order(wavenumber)]
+wavenumberDe <- wavenumber[order(wavenumber)]
+
+
+bpdiff <- plot(x=wavenumberDe,y=aucvalueDe,las=2,cex.axis=0.5,type="l",
+                                  ylab="ROCAUC",
                    xlab=expression("Wavenumber (cm)"^"-1"))
 title("Difference in Decorrelated Absorbance")
+
+
+
 
 
 par(op)
 
 ```
+
+### Comparing ROC AUC
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 5.0, fig.width= 7.0}
+par(cex=0.8)
+varlist <- colnames(SalivaThermal_d2)[!(colnames(SalivaThermal_d2) %in% "class")]
+varlist <- cbind(varlist,varlist)
+
+univarD2 <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           SalivaThermal_d2,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
+
+aucvalue <- univarD2$orderframe$ROCAUC
+wavenumber=as.numeric(str_remove_all(rownames(univarD2$orderframe),"DD_"))
+aucvalueDD <- aucvalue[order(wavenumber)]
+wavenumberDD <- wavenumber[order(wavenumber)]
+
+
+
+bpdiff <- plot(x=wavenumberRaw,y=aucvalueRaw,
+               las=2,
+               cex.axis=0.5,
+               type="l",
+               lwd=3,
+                xlim=c(800,1300),
+                ylim=c(0.45,0.86),
+               ylab="ROC AUC",
+               xlab=expression("Wavenumber (cm)"^"-1"))
+title("Feature Association with COVID-19")
+
+valroc <- aucvalueDD > 0.7
+points(wavenumberDD[valroc],aucvalueDD[valroc],col="blue",lwd=3)
+
+#bpdiff <- plot
+valroc <- aucvalueDe > 0.7
+
+dc <- getDerivedCoefficients(deThermal)
+for (dename in names(dc))
+{
+  wave <- as.numeric(str_remove(dename,"De_V_"))
+  if (wave %in% wavenumberDe[valroc])
+  {
+    for (asfeat in names(dc[[dename]]))
+    {
+      points(x=as.numeric(str_remove_all(asfeat,"V_")),
+               y=univarDe$orderframe[dename,"ROCAUC"],col="pink",pch=10)
+    }
+  }
+}
+
+points(x=wavenumberDe[valroc],
+               y=aucvalueDe[valroc],col="red",pch=4,lwd=2)
+
+legend("bottomleft",legend=c("raw", "2nd Deriv","De: Parent","De: w>0"),
+       col=c("black", "blue","red","pink"), lty=c(1,0,0,0),lwd=c(3,3,2,1),pch=c(-1,1,4,10), cex=0.8)
+
+```
+
+
 
 ### Holdout Cross-Validation
 

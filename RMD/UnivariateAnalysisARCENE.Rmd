@@ -112,7 +112,9 @@ varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 
 ### The heat maps.
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 7.0}
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 5.0, fig.width= 7.0}
+
+par(cex=0.6,cex.main=0.85,cex.axis=0.7)
 cormat <- cor(dataframe[,varlist[1:1000,1]],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
@@ -174,10 +176,10 @@ dc <- getDerivedCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
-if (length(selectedlist)>10)
-{
-  selectedlist <- selectedlist[1:10]
-}
+#if (length(selectedlist)>10)
+#{
+#  selectedlist <- selectedlist[1:10]
+#}
 theDeFormulas <- selectedlist
 ```
 
@@ -219,6 +221,10 @@ for (dx in names(deFromula))
     }
   }
 }
+orgnamez <- rownames(finalTable)
+orgnamez <- str_remove_all(orgnamez,"Ba_")
+orgnamez <- str_remove_all(orgnamez,"De_")
+finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
 finalTable <- finalTable[order(-finalTable$ROCAUC),]
 

@@ -243,9 +243,12 @@ for (dx in names(deFromula))
     }
   }
 }
+orgnamez <- rownames(finalTable)
+orgnamez <- str_remove_all(orgnamez,"Ba_")
+orgnamez <- str_remove_all(orgnamez,"De_")
+finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
 finalTable <- finalTable[order(-finalTable$ROCAUC),]
-
 pander::pander(finalTable)
 ```
 
