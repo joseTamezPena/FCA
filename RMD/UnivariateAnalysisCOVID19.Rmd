@@ -191,7 +191,11 @@ pander::pander(univarDe$orderframe[1:20,univariate_columns])
 ### Comparing Decorrelation vs Original
 
 ```{r results = "asis"}
-topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-4,])
+pthr <- 0.05/(ncol(dataframe)-1)
+
+topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<pthr,])
+
+#topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-4,])
 dc <- getDerivedCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]

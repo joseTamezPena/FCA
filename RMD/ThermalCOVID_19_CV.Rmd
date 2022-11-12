@@ -244,6 +244,7 @@ aucvalueRaw <- aucvalue[order(wavenumber)]
 wavenumberRaw <- wavenumber[order(wavenumber)]
 bpdiff <- plot(wavenumberRaw,aucvalueRaw,las=2,cex.axis=0.5,type="l",
                                   ylab="ROC AUC",
+                    xlim = c(1300,800),
                    xlab=expression("Wavenumber (cm)"^"-1"))
 title("Difference in Absorbance")
 
@@ -296,14 +297,17 @@ effectSize <- (apply(cases,2,median)-apply(controls,2,median))/apply(reldecor[,s
 wavenumber=as.numeric(str_remove_all(names(effectSize),"De_V_"))
 
 aucvalue <- univarDe$orderframe$ROCAUC
+depcvalue <- univarDe$orderframe$WilcoxRes.p
+
 wavenumber=str_remove_all(rownames(univarDe$orderframe),"De_V_")
 wavenumber=str_remove_all(wavenumber,"Ba_V_")
 wavenumber=as.numeric(str_remove_all(wavenumber,"V_"))
 aucvalueDe <- aucvalue[order(wavenumber)]
+depcvalue <- depcvalue[order(wavenumber)]
 wavenumberDe <- wavenumber[order(wavenumber)]
 
-
 bpdiff <- plot(x=wavenumberDe,y=aucvalueDe,las=2,cex.axis=0.5,type="l",
+                                   xlim = c(1300,800),
                                   ylab="ROCAUC",
                    xlab=expression("Wavenumber (cm)"^"-1"))
 title("Difference in Decorrelated Absorbance")
@@ -322,6 +326,7 @@ par(op)
 par(cex=0.8)
 varlist <- colnames(SalivaThermal_d2)[!(colnames(SalivaThermal_d2) %in% "class")]
 varlist <- cbind(varlist,varlist)
+pthr <- 0.05/(ncol(SalivaThermal)-1)
 
 univarD2 <- uniRankVar(varlist,
 	           "class~1",
@@ -333,10 +338,12 @@ univarD2 <- uniRankVar(varlist,
 	            uniType = "Binary")
 
 aucvalue <- univarD2$orderframe$ROCAUC
+pwilvalue <- univarD2$orderframe$FRes.p
+
 wavenumber=as.numeric(str_remove_all(rownames(univarD2$orderframe),"DD_"))
 aucvalueDD <- aucvalue[order(wavenumber)]
 wavenumberDD <- wavenumber[order(wavenumber)]
-
+pwilvalue <- pwilvalue[order(wavenumber)]
 
 
 bpdiff <- plot(x=wavenumberRaw,y=aucvalueRaw,
@@ -344,17 +351,17 @@ bpdiff <- plot(x=wavenumberRaw,y=aucvalueRaw,
                cex.axis=0.5,
                type="l",
                lwd=3,
-                xlim=c(800,1300),
+                xlim=c(1300,800),
                 ylim=c(0.45,0.86),
                ylab="ROC AUC",
                xlab=expression("Wavenumber (cm)"^"-1"))
 title("Feature Association with COVID-19")
 
-valroc <- aucvalueDD > 0.7
+valroc <- pwilvalue < pthr
 points(wavenumberDD[valroc],aucvalueDD[valroc],col="blue",lwd=3)
 
 #bpdiff <- plot
-valroc <- aucvalueDe > 0.7
+valroc <- depcvalue < pthr
 
 dc <- getDerivedCoefficients(deThermal)
 for (dename in names(dc))
