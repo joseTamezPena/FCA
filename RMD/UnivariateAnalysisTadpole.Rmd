@@ -115,23 +115,38 @@ validBaselineTadpole$Entorhinal=validBaselineTadpole$Entorhinal/validBaselineTad
 validBaselineTadpole$Fusiform=validBaselineTadpole$Fusiform/validBaselineTadpole$ICV
 validBaselineTadpole$MidTemp=validBaselineTadpole$MidTemp/validBaselineTadpole$ICV
 
-leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
-RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
+leftData <- validBaselineTadpole[,LeftFields]
+RightData <- validBaselineTadpole[,RightFields]
+#leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
+#RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
 
 ## get mean and relative difference 
 meanLeftRight <- (leftData + RightData)/2
 difLeftRight <- abs(leftData - RightData)
+
+minLeftRight <- pmin(leftData,RightData)
+maxLeftRight <- pmax(leftData,RightData)
+
 reldifLeftRight <- difLeftRight/meanLeftRight
+maxMinRatio <- maxLeftRight/minLeftRight
+
+
 colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
 colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
 colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
+colnames(maxMinRatio) <- paste("mMR",colnames(maxMinRatio),sep="_")
 
+meanLeftRight <- meanLeftRight/validBaselineTadpole$ICV
+difLeftRight <- log10(1.0e6*difLeftRight + 1.0)
+reldifLeftRight <- log10(1.0e6*reldifLeftRight + 1.0)
+maxMinRatio <- log10(1.0e6*maxMinRatio + 1.0)
 
 validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
                                                c(LeftFields,RightFields))]
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
-validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
-#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight)
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
+
+validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight,maxMinRatio)
 
 ## Remove columns with too many NA more than %15 of NA
 nacount <- apply(is.na(validBaselineTadpole),2,sum)/nrow(validBaselineTadpole) < 0.15
@@ -233,6 +248,9 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 
 ```{r results = "asis"}
 DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+
+
+
 pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"De_"))/(ncol(DEdataframe)-1)))
 pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
 demat <- attr(DEdataframe,"GDSTM")
@@ -242,6 +260,7 @@ varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 
 
 ```
+
 
 ### The heat maps.
 

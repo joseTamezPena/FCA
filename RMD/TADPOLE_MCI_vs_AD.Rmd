@@ -111,22 +111,57 @@ validBaselineTadpole$Entorhinal=validBaselineTadpole$Entorhinal/validBaselineTad
 validBaselineTadpole$Fusiform=validBaselineTadpole$Fusiform/validBaselineTadpole$ICV
 validBaselineTadpole$MidTemp=validBaselineTadpole$MidTemp/validBaselineTadpole$ICV
 
-leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
-RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
+
+leftData <- validBaselineTadpole[,LeftFields]
+RightData <- validBaselineTadpole[,RightFields]
+#leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
+#RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
 
 ## get mean and relative difference 
 meanLeftRight <- (leftData + RightData)/2
 difLeftRight <- abs(leftData - RightData)
+
+minLeftRight <- pmin(leftData,RightData)
+maxLeftRight <- pmax(leftData,RightData)
+
+
 reldifLeftRight <- difLeftRight/meanLeftRight
+maxMinRatio <- maxLeftRight/minLeftRight
+
+
 colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
 colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
 colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
+colnames(maxMinRatio) <- paste("MmR",colnames(maxMinRatio),sep="_")
+
+meanLeftRight <- meanLeftRight/validBaselineTadpole$ICV
+difLeftRight <- log(1.0e6*difLeftRight + 1.0)
+reldifLeftRight <- log(1.0e6*reldifLeftRight + 1.0)
+maxMinRatio <- log(1.0e6*maxMinRatio + 1.0)
 
 
 validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
                                                c(LeftFields,RightFields))]
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
-validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
+validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight,maxMinRatio)
+
+
+#leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
+#RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
+
+## get mean and relative difference 
+#meanLeftRight <- (leftData + RightData)/2
+#difLeftRight <- abs(leftData - RightData)
+#reldifLeftRight <- difLeftRight/meanLeftRight
+#colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
+#colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
+#colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
+
+#validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
+#                                               c(LeftFields,RightFields))]
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight)
 
 ## Remove columns with too many NA more than %15 of NA
@@ -172,7 +207,7 @@ pander::pander(table(validBaselineTadpole$DX))
 ### the set
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 set.seed(2)
-TrainFraction <- 0.70;
+TrainFraction <- 0.80;
 
 TADPOLECrossMRI <- subset(validBaselineTadpole,DX == "Dementia" | DX == "MCI")
 table(TADPOLECrossMRI$DX)
@@ -213,7 +248,7 @@ cvBSWiMSRaw <- randomCV(TADPOLECrossMRI,
                 fittingFunction= BSWiMS.model,
                 classSamplingType = "Pro",
                 trainFraction = TrainFraction,
-                repetitions = 100,
+                repetitions = 200,
                 loops=1,
 )
 bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.90)
@@ -455,6 +490,8 @@ rnames <- str_replace_all(rnames,"M_","")
 rnames <- str_replace_all(rnames,"RD_","")
 rnames <- str_replace_all(rnames,"Ba_","")
 rnames <- str_replace_all(rnames,"De_","")
+rnames <- str_replace_all(rnames,"MmR_","")
+rnames <- str_replace_all(rnames,"D_","")
 description <- character()
 
 for (ddet in c(1:length(rnames)))
