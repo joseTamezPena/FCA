@@ -51,7 +51,11 @@ nkiDf <- as.data.frame(t(exprs(nki)))
 pdata <- pData(nki)
 experimentData(nki)
 
+NIKset <- cbind(DFS=pdata$e.rfs,nkiDf)
+table(NIKset$RFS)
 TrainFraction <- 0.8
+
+
 ```
 
 ### Cross Validation

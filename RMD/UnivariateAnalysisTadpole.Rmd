@@ -128,25 +128,53 @@ minLeftRight <- pmin(leftData,RightData)
 maxLeftRight <- pmax(leftData,RightData)
 
 reldifLeftRight <- difLeftRight/meanLeftRight
-maxMinRatio <- maxLeftRight/minLeftRight
+#minreldifLeftRight <- difLeftRight/minLeftRight
+#maxreldifLeftRight <- difLeftRight/maxLeftRight
+maxMinRatio <- minLeftRight/maxLeftRight
 
 
+colnames(minLeftRight) <- paste("Min",colnames(minLeftRight),sep="_")
+colnames(maxLeftRight) <- paste("Max",colnames(maxLeftRight),sep="_")
 colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
 colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
 colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
 colnames(maxMinRatio) <- paste("mMR",colnames(maxMinRatio),sep="_")
+#colnames(minreldifLeftRight) <- paste("miMR",colnames(minreldifLeftRight),sep="_")
+#colnames(maxreldifLeftRight) <- paste("maMR",colnames(maxreldifLeftRight),sep="_")
+
+#hist(maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
+#hist(1.0/maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
+#hist(log(1.0e6/maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16+1))
+
+#hist(reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
+#hist(1.0/reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
+#hist(log(1.0e6/reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16+1))
+
 
 meanLeftRight <- meanLeftRight/validBaselineTadpole$ICV
-difLeftRight <- log10(1.0e6*difLeftRight + 1.0)
-reldifLeftRight <- log10(1.0e6*reldifLeftRight + 1.0)
-maxMinRatio <- log10(1.0e6*maxMinRatio + 1.0)
+minLeftRight <- minLeftRight/validBaselineTadpole$ICV
+maxLeftRight <- maxLeftRight/validBaselineTadpole$ICV
+#difLeftRight <- log10(1.0e6*difLeftRight + 1.0)
+#reldifLeftRight <- log10(1.0e6/(1.0e-6+reldifLeftRight) + 1.0)
+#maxMinRatio <- log10(1.0e6/(1.0e-6+maxMinRatio) + 1.0)
+#minreldifLeftRight <- log10(1.0e6/(1.0e-6+minreldifLeftRight) + 1.0)
+#maxreldifLeftRight <- log10(1.0e6/(1.0e-6+maxreldifLeftRight) + 1.0)
 
 validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
                                                c(LeftFields,RightFields))]
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
 
-validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight,maxMinRatio)
+validBaselineTadpole <- cbind(validBaselineTadpole,
+                              meanLeftRight,
+                              difLeftRight,
+#                              maxLeftRight,
+#                              minLeftRight,
+                              reldifLeftRight,
+                              maxMinRatio
+#                              minreldifLeftRight,
+#                              maxreldifLeftRight
+                              )
 
 ## Remove columns with too many NA more than %15 of NA
 nacount <- apply(is.na(validBaselineTadpole),2,sum)/nrow(validBaselineTadpole) < 0.15
@@ -238,9 +266,10 @@ univar <- uniRankVar(varlist,
 	            description = ".",
 	            uniType = "Binary")
 
-pander::pander(univar$orderframe[1:20,univariate_columns])
+pander::pander(univar$orderframe[1:60,univariate_columns])
 
 topfiveOrg <- rownames(univar$orderframe[1:5,])
+
 
 ```
 
@@ -251,11 +280,22 @@ DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = T
 
 
 
+demat <- attr(DEdataframe,"GDSTM")
+
+pander::pander(c(Cols=ncol(demat),Rows=nrow(demat)))
+totFe <- ncol(DEdataframe)-1
+totBa <- sum(str_detect(colnames(DEdataframe),"Ba_"))
+totDe <- sum(str_detect(colnames(DEdataframe),"De_"))
+toUnmat <- sum(apply(demat!=0,2,sum)==1)
+unaltered <- totFe - ncol(demat) + toUnmat
+pander::pander(c(Features=totFe,totBa=totBa,totDe=totDe,unaltered=totFe-totBa-totDe,totuna=unaltered))
 pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"De_"))/(ncol(DEdataframe)-1)))
 pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
-demat <- attr(DEdataframe,"GDSTM")
-pander::pander(c(sparse_Fraction=1.0-sum(demat==0)/ncol(demat)/nrow(demat)))
-varlistDe <-  colnames(DEdataframe)[colnames(DEdataframe) != "class"];
+
+pander::pander(c(Unaltered_Fraction=unaltered/totFe))
+pander::pander(c(sparcity=(totFe-ncol(demat)+sum(abs(demat)!=0))/totFe/totFe))
+
+varlistDe <-  colnames(demat)[apply(demat!=0,2,sum)>1];
 varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 
 
@@ -265,9 +305,8 @@ varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 ### The heat maps.
 
 ```{r results = "asis", warning = FALSE, dpi=300, fig.height= 5.0, fig.width= 7.0}
-
 par(cex=0.6,cex.main=0.85,cex.axis=0.7)
-cormat <- cor(dataframe[,varlist[,1]],method="spearman")
+cormat <- cor(dataframe[,rownames(demat)],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -279,11 +318,10 @@ gplots::heatmap.2(abs(cormat),
                   cexCol = 0.35,
                   key.title=NA,
                   key.xlab="Spearman Correlation",
-                  xlab="Feature", ylab="Feature",
-)
+                  xlab="Feature", ylab="Feature")
 
 
-cormat <- cor(DEdataframe[,varlistDe[,1]],method="spearman")
+cormat <- cor(DEdataframe[,colnames(demat)],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -324,15 +362,104 @@ pander::pander(univarDe$orderframe[1:20,univariate_columns])
 ### Comparing Decorrelation vs Original
 
 ```{r results = "asis"}
-pthr <- 0.05/(ncol(dataframe)-1)
+pthr <- 0.20/(ncol(dataframe)-1)
 
 topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<pthr,])
+topDecorNames <- unique(c(topDecorNames,rownames(univarDe$orderframe[1:5,])))
+
 dc <- getDerivedCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
 theDeFormulas <- selectedlist
 ```
+
+
+## CV ROC Analysis
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+par(op)
+par(mfrow=c(1,2),cex=0.9)
+fraction <-0.80
+repetitions <- 100
+
+fcout <- round(fraction*nrow(dataframe)/15+1.0)
+pander::pander(c(NumberofFeatures=fcout))
+
+cvRaw <- randomCV(dataframe,
+                outcome,
+                fittingFunction= filteredFit,
+                classSamplingType = "Pro",
+                trainFraction = fraction,
+                repetitions = repetitions,
+                fitmethod=  glm,
+                filtermethod=mRMR.classic_FRESA,
+                filtermethod.control=list(feature_count= fcout),
+                family="binomial"
+)
+bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
+
+
+pander::pander(bpraw$CM.analysis$tab)
+pander::pander(bpraw$accc)
+pander::pander(bpraw$aucs)
+pander::pander(bpraw$berror)
+
+cvDe <- randomCV(DEdataframe,
+                outcome,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvRaw$trainSamplesSets,
+                fitmethod=  glm,
+                filtermethod=mRMR.classic_FRESA,
+                filtermethod.control=list(feature_count= fcout),
+                family="binomial"
+)
+bpDecor <- predictionStats_binary(cvDe$medianTest,"Decorrelated",cex=0.75)
+
+par(op)
+
+pander::pander(bpDecor$CM.analysis$tab)
+pander::pander(bpDecor$accc)
+pander::pander(bpDecor$aucs)
+pander::pander(bpDecor$berror)
+
+### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
+pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
+
+```
+
+## Feature Frequency Plots
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+par(mfrow=c(2,1),cex=0.9,cex.axis=0.8)
+
+rawtopf <- cvRaw$featureFrequency/repetitions
+crawtopf <- rawtopf
+
+if (length(rawtopf) > 40)
+{
+  rawtopf <- rawtopf[1:40]
+}
+barplot(100*rawtopf,las=2,main="Raw Features",ylim=c(0,100.0),cex.names = 0.5,cex.axis = 0.5,ylab="Sel. %")
+
+detopf <- cvDe$featureFrequency/repetitions
+cdetopf <- detopf
+names(cdetopf) <- str_remove_all(names(cdetopf),"Ba_")
+names(cdetopf) <- str_remove_all(names(cdetopf),"De_")
+if (length(detopf) > 40)
+{
+  detopf <- detopf[1:40]
+}
+
+barplot(100*detopf,las=2,main="Decorrelated Features",ylim=c(0,100.0),cex.names = 0.5,cex.axis = 0.5,ylab="Sel. %")
+
+par(op)
+
+
+
+```
+
+
 
 ### Final Table
 
@@ -343,7 +470,7 @@ unlistdecorr <- unique(names(unlist(unlistdecorr)))
 
 finalTableDe <- univarDe$orderframe[deNames_in_dc,univariate_columns]
 
-finalTableOr <- univar$orderframe[unique(c(topfiveOrg,unlistdecorr)),univariate_columns]
+finalTableOr <- univar$orderframe[unique(c(topfiveOrg,unlistdecorr,names(crawtopf)[1:2],names(cdetopf)[1:2])),univariate_columns]
 
 finalTable <- rbind(finalTableOr,finalTableDe)
 
@@ -376,9 +503,12 @@ orgnamez <- rownames(finalTable)
 orgnamez <- str_remove_all(orgnamez,"Ba_")
 orgnamez <- str_remove_all(orgnamez,"De_")
 finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
+finalTable$raw_Freq <- crawtopf[orgnamez]
+finalTable$de_Freq <- cdetopf[orgnamez]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
 finalTable <- finalTable[order(-finalTable$ROCAUC),]
 
 pander::pander(finalTable)
 ```
+
 

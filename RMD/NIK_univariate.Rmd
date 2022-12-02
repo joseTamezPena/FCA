@@ -1,5 +1,5 @@
 ---
-title: "Univariate: DARWIN"
+title: "NIK"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -21,47 +21,49 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
 ```
 
-# DARWIN Univariate
+# NIK
 
 ### Loading the libraries
 
 ```{r}
 library("FRESA.CAD")
 library(readxl)
+library(igraph)
+library(Biobase)
+library("breastCancerNKI")
+
 op <- par(no.readonly = TRUE)
 pander::panderOptions('digits', 3)
 pander::panderOptions('table.split.table', 400)
 pander::panderOptions('keep.trailing.zeros',TRUE)
 
+signedrcube <- function(x) { return (sign(x)*(abs(x)^(1/3)))}
+
 ```
-
-
 
 ## The Data
 
+
 ```{r}
-DARWIN <- read.csv("~/GitHub/FCA/Data/DARWIN/DARWIN.csv")
-rownames(DARWIN) <- DARWIN$ID
-DARWIN$ID <- NULL
-DARWIN$class <- 1*(DARWIN$class=="P")
-print(table(DARWIN$class))
+data(nki)
 
-DARWIN[,1:ncol(DARWIN)] <- sapply(DARWIN,as.numeric)
-signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
+nkiDf <- as.data.frame(t(exprs(nki)))
+pdata <- pData(nki)
+experimentData(nki)
 
-whof <- !(colnames(DARWIN) %in% c("class"));
-DARWIN[,whof] <- signedlog(DARWIN[,whof])
-
+nkiDf <- nkiDf[,apply(is.na(nkiDf),2,sum)==0]
+NIKset <- as.data.frame(cbind(DFS=as.numeric(pdata$e.rfs),nkiDf))
+NIKset <- NIKset[!is.na(NIKset$DFS),]
+table(NIKset$DFS)
+sum(is.na(NIKset))
 
 
 ```
-
-
 #### Standarize the names for the reporting
 
 ```{r results = "asis"}
-dataframe <- DARWIN
-outcome <- "class"
+dataframe <- NIKset
+outcome <- "DFS"
 
 ```
 
@@ -104,7 +106,9 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,maxLoops=200,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE)
+
+
 
 demat <- attr(DEdataframe,"GDSTM")
 
@@ -193,7 +197,7 @@ pthr <- 0.20/(ncol(dataframe)-1)
 topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<pthr,])
 topDecorNames <- unique(c(topDecorNames,rownames(univarDe$orderframe[1:5,])))
 
-#topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-5,])
+#topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-4,])
 dc <- getDerivedCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]

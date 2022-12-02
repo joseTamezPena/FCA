@@ -126,24 +126,31 @@ maxLeftRight <- pmax(leftData,RightData)
 
 
 reldifLeftRight <- difLeftRight/meanLeftRight
-maxMinRatio <- maxLeftRight/minLeftRight
+#mireldifLeftRight <- difLeftRight/minLeftRight
+#mareldifLeftRight <- difLeftRight/maxLeftRight
+maxMinRatio <- minLeftRight/maxLeftRight
 
 
 colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
 colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
 colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
+#colnames(mireldifLeftRight) <- paste("MiRD",colnames(mireldifLeftRight),sep="_")
+#colnames(mareldifLeftRight) <- paste("MaRD",colnames(mareldifLeftRight),sep="_")
 colnames(maxMinRatio) <- paste("MmR",colnames(maxMinRatio),sep="_")
 
 meanLeftRight <- meanLeftRight/validBaselineTadpole$ICV
-difLeftRight <- log(1.0e6*difLeftRight + 1.0)
-reldifLeftRight <- log(1.0e6*reldifLeftRight + 1.0)
-maxMinRatio <- log(1.0e6*maxMinRatio + 1.0)
+#difLeftRight <- log(1.0e6*difLeftRight + 1.0)
+#reldifLeftRight <- log10(1.0e6/(1.0e-6+reldifLeftRight) + 1.0)
+#maxMinRatio <- log10(1.0e6/(1.0e-6+maxMinRatio) + 1.0)
+#mireldifLeftRight <- log10(1.0e6/(1.0e-6+mireldifLeftRight) + 1.0)
+#mareldifLeftRight <- log10(1.0e6/(1.0e-6+mareldifLeftRight) + 1.0)
 
 
 validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
                                                c(LeftFields,RightFields))]
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
+#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight,maxMinRatio,mireldifLeftRight,mareldifLeftRight)
 validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight,reldifLeftRight,maxMinRatio)
 
 
@@ -207,7 +214,7 @@ pander::pander(table(validBaselineTadpole$DX))
 ### the set
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 set.seed(2)
-TrainFraction <- 0.80;
+TrainFraction <- 0.75;
 
 TADPOLECrossMRI <- subset(validBaselineTadpole,DX == "Dementia" | DX == "MCI")
 table(TADPOLECrossMRI$DX)
@@ -248,7 +255,7 @@ cvBSWiMSRaw <- randomCV(TADPOLECrossMRI,
                 fittingFunction= BSWiMS.model,
                 classSamplingType = "Pro",
                 trainFraction = TrainFraction,
-                repetitions = 200,
+                repetitions = 100,
                 loops=1,
 )
 bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.90)
@@ -314,7 +321,7 @@ fc <- cluster_optimal(gr)
 plot(fc, gr,
      edge.width=10*E(gr)$weight,
      vertex.size=1*VertexSize,
-     vertex.label.cex=0.75,
+     vertex.label.cex=0.6,
      vertex.label.dist=0,
      main="MCI vs Dementia Diagnosis")
 par(op)
@@ -387,6 +394,19 @@ TADPOLE_DX_NLD <- GDSTMDecorrelation(NormalData,Outcome="DX",
 #TADPOLE_DX_TRAIND <-  predictDecorrelate(TADPOLE_DX_NLD,TADPOLE_DX_TRAIN)
 #TADPOLE_DX_TESTD <-  predictDecorrelate(TADPOLE_DX_NLD,TADPOLE_DX_TEST)
 TADPOLECrossMRID <- predictDecorrelate(TADPOLE_DX_NLD,TADPOLECrossMRI)
+#TADPOLECrossMRID$De_M_ST24TA
+
+#DeCorrmatrix <- attr(TADPOLE_DX_NLD,"GDSTM")
+#banames <- colnames(DeCorrmatrix)[apply(DeCorrmatrix!=0,2,sum)==1]
+
+#dmat <- as.data.frame(attr(TADPOLE_DX_NLD,"GDSTM"))
+#sum(dmat$De_M_ST24TA!=0)
+#sum(dmat$De_M_ST13TA!=0)
+#sum(dmat["M_ST24TA",]!=0)
+
+#ubase <- attr(TADPOLE_DX_NLD,"uniqueBase")
+#"M_ST24TA" %in% ubase
+                       
 ```
 
 ### Decorrelated ML
@@ -456,7 +476,7 @@ fc <- cluster_optimal(gr)
 plot(fc, gr,
      edge.width=10*E(gr)$weight,
      vertex.size=VertexSize,
-     vertex.label.cex=0.75,
+     vertex.label.cex=0.6,
      vertex.label.dist=0,
      main="MCI vs Dementia Diagnosis")
 par(op)
@@ -507,6 +527,7 @@ tableMCI_DeD$Description <- description[rownames(tableMCI_DeD)]
 ## Getting the decorrelation formula
 dc <- getDerivedCoefficients(TADPOLE_DX_NLD)
 decornames <- rownames(sm$coefficients)
+dc$De_M_ST24TA
 
 deNames_in_dc <- decornames[decornames %in% names(dc)]
 theDeFormulas <- dc[deNames_in_dc]
