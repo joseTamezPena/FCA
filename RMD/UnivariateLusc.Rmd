@@ -1,5 +1,5 @@
 ---
-title: "Univariate: GRAVIER"
+title: "LUSC_CCA"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -16,18 +16,20 @@ editor_options:
 ---
 
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
 ```
 
-# GRAVIER Univariate
+# LUSC Univariate
 
 ### Loading the libraries
 
 ```{r}
 library("FRESA.CAD")
 library(readxl)
+library("whitening")
 op <- par(no.readonly = TRUE)
 pander::panderOptions('digits', 3)
 pander::panderOptions('table.split.table', 400)
@@ -35,27 +37,39 @@ pander::panderOptions('keep.trailing.zeros',TRUE)
 
 ```
 
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+data(lusc)
+
+names(lusc)
 
 
-## The Data
+luscdataset <- as.data.frame(cbind(lusc$rnaseq2,lusc$methyl,sex=lusc$sex,status=lusc$censoringStatus,surtime=lusc$survivalTime))
+
+rluscdataset <- luscdataset[complete.cases(luscdataset),]
+#rluscdataset <- subset(luscdataset,surtime > 1.5 | status==1)
+rluscdataset[,1:ncol(rluscdataset)] <- sapply(rluscdataset,as.numeric)
+
+pander::pander(table(rluscdataset$status))
+
+s = Surv(lusc$survivalTime, lusc$censoringStatus)
+plot(survfit(s ~ lusc$sex), xlab = "Years", ylab = "Probability of survival", lty=c(2,1), lwd=2)
+legend("topright", legend = c("male", "female"), lty =c(1,2), lwd=2)
 
 
-```{r}
-data('gravier', package = 'datamicroarray')
-table(gravier$y)
+lusc <- NULL
+luscdataset <- NULL
 
-gravierset <- as.data.frame(cbind(class=1*(gravier$y=="poor"),gravier$x))
-
-gravier <- NULL
-
-
+boxplot(rluscdataset$surtime~rluscdataset$status)
+surTime <- rluscdataset$surtime
+rluscdataset$surtime <- NULL
 
 ```
+
 #### Standarize the names for the reporting
 
 ```{r results = "asis"}
-dataframe <- gravierset
-outcome <- "class"
+dataframe <- rluscdataset
+outcome <- "status"
 
 ```
 
@@ -76,47 +90,59 @@ varlist <- as.data.frame(cbind(name=varlist,desc=varlist))
 
 ```{r results = "asis"}
 
-univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","cohortKSP","ROCAUC","WilcoxRes.p","FRes.p")
+univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","cohortKSP","ROCAUC","cStatCorr","kendall.p","ZGLM")
+
+
+dataframeTime <- cbind(dataframe,SurvTime=surTime)
+
+
 univar <- uniRankVar(varlist,
-	           paste(outcome,"~1"),
+	           paste("Surv(SurvTime,",outcome,")~1"),
 	           outcome,
-	           dataframe,
+	           dataframeTime,
 	           categorizationType = "Raw",
-	           type = "LOGIT",
-	           rankingTest = "AUC",
-	            cateGroups = c(0.1, 0.9),
-	            raw.dataFrame = NULL,
-	            description = ".",
-	            uniType = "Binary")
+	           type = "COX",
+	           rankingTest = "Ztest",
+	            uniType = "Binary",
+	           timeOutcome="SurvTime")
 
-pander::pander(univar$orderframe[1:20,univariate_columns])
 
+pander::pander(cbind(univar$orderframe[1:20,univariate_columns],pvalue=pnorm(abs(univar$orderframe[1:20,"ZGLM"]),lower.tail = FALSE)))
 topfiveOrg <- rownames(univar$orderframe[1:5,])
 
+
+
 ```
 
-
-### ROC plot of top feature
+### Survival plot of top feature
 ```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+s = Surv(dataframeTime$SurvTime, dataframeTime$status)
 topvar <- univar$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),dataframe,family="binomial");
-pmod <- predict(cmod,dataframe)
+cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),dataframeTime);
+pmod <- predict(cmod,dataframeTime,type="lp")
+pmor <- predict(cmod,dataframeTime,type="risk")
+plot(survfit(s ~ pmod>0),main=topvar, xlab = "Years", ylab = "Probability of survival", lty=c(2,1), lwd=2)
+legend("topright", legend = c("High Risk", "Low Risk"), lty =c(1,2), lwd=2)
+pLR=EmpiricalSurvDiff(dataframeTime$SurvTime,dataframeTime$status,pmod>0)
+pander::pander(pLR$pvalue)
 
 
-perd <- cbind(dataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
+perdsurvTest <- cbind(dataframeTime$SurvTime,
+                  dataframeTime$status,
+                  pmod,
+                  pmor)
+prSurvTest <- predictionStats_survival(perdsurvTest,topvar)
 
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
+pander::pander(survdiff(s ~ pmod>0))
 
 ```
-
 
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="RLM",thr=0.50,verbose = TRUE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE)
 
 
 
@@ -182,38 +208,49 @@ par(op)
 
 ```{r results = "asis"}
 
+DEdataframeTime <- cbind(DEdataframe,SurvTime=surTime)
+
+#DEdataframe$surTime <- surTime
+
 univarDe <- uniRankVar(varlistDe,
-              paste(outcome,"~1"),
-	            outcome,
-              DEdataframe,
-	            categorizationType = "Raw",
-	            type = "LOGIT",
-	            rankingTest = "AUC",
-	            cateGroups = c(0.1, 0.9),
-	            raw.dataFrame = NULL,
-	            description = ".",
-	            uniType = "Binary")
+	           paste("Surv(SurvTime,",outcome,")~1"),
+	           outcome,
+	           DEdataframeTime,
+	           categorizationType = "Raw",
+	           type = "COX",
+	           rankingTest = "Ztest",
+	            uniType = "Binary",
+	           timeOutcome="SurvTime")
 
-pander::pander(univarDe$orderframe[1:20,univariate_columns])
+
+pander::pander(cbind(univarDe$orderframe[1:20,univariate_columns],pvalue=pnorm(abs(univarDe$orderframe[1:20,"ZGLM"]),lower.tail = FALSE)))
+
+
 
 ```
 
 
-### ROC plot of top feature
+### Survival plot of top feature
 ```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+s = Surv(dataframeTime$SurvTime, dataframeTime$status)
 topvar <- univarDe$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),DEdataframe,family="binomial");
-pmod <- predict(cmod,DEdataframe)
+cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),DEdataframeTime);
+pmod <- predict(cmod,DEdataframeTime,type="lp")
+pmor <- predict(cmod,DEdataframeTime,type="risk")
+plot(survfit(s ~ pmod>0),main=topvar, xlab = "Years", ylab = "Probability of survival", lty=c(2,1), lwd=2)
+legend("topright", legend = c("High Risk", "Low Risk"), lty =c(1,2), lwd=2)
+pLR=EmpiricalSurvDiff(dataframeTime$SurvTime,dataframeTime$status,pmod>0)
+pander::pander(pLR$pvalue)
 
+perdsurvTest <- cbind(dataframeTime$SurvTime,
+                  dataframeTime$status,
+                  pmod,
+                  pmor)
+prSurvTest <- predictionStats_survival(perdsurvTest,topvar)
 
-perd <- cbind(DEdataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
-
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
+pander::pander(survdiff(s ~ pmod>0))
 
 ```
-
 
 ### Comparing Decorrelation vs Original
 
@@ -241,35 +278,57 @@ repetitions <- 100
 
 fcout <- round(fraction*nrow(dataframe)/15+1.0)
 pander::pander(c(NumberofFeatures=fcout))
+dataframeTime <- cbind(dataframe,SurvTime=surTime)
 
-cvRaw <- randomCV(dataframe,
-                outcome,
-                fittingFunction= filteredFit,
+#cvRaw <- randomCV(dataframe,
+#                theOutcome = outcome,
+#                fittingFunction= filteredFit,
+#                classSamplingType = "Pro",
+#                trainFraction = fraction,
+#                repetitions = repetitions,
+#                fitmethod=  glm,
+#                filtermethod=mRMR.classic_FRESA,
+#                filtermethod.control=list(feature_count= fcout),
+#                family="binomial"
+#)
+uv <- univariate_cox(dataframeTime,formula("Surv(SurvTime,status)~."))
+
+cvRaw <- randomCV(dataframeTime,
+                theOutcome = formula("Surv(SurvTime,status)~."),
+                fittingFunction= coxph,
                 classSamplingType = "Pro",
                 trainFraction = fraction,
                 repetitions = repetitions,
-                fitmethod=  glm,
-                filtermethod=mRMR.classic_FRESA,
-                filtermethod.control=list(feature_count= fcout),
-                family="binomial"
+                featureSelectionFunction=univariate_cox,
 )
-bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
 
+bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
 
 pander::pander(bpraw$CM.analysis$tab)
 pander::pander(bpraw$accc)
 pander::pander(bpraw$aucs)
 pander::pander(bpraw$berror)
 
-cvDe <- randomCV(DEdataframe,
-                outcome,
-                fittingFunction= filteredFit,
+#cvDe <- randomCV(DEdataframe,
+#                outcome,
+#                fittingFunction= filteredFit,
+#                trainSampleSets= cvRaw$trainSamplesSets,
+#                fitmethod=  glm,
+#                filtermethod=mRMR.classic_FRESA,
+#                filtermethod.control=list(feature_count= fcout),
+#                family="binomial",
+#
+#)
+
+dataframeTime <- cbind(DEdataframe,SurvTime=surTime)
+cvDe <- randomCV(dataframeTime,
+                theOutcome = formula("Surv(SurvTime,status)~."),
+                fittingFunction= coxph,
                 trainSampleSets= cvRaw$trainSamplesSets,
-                fitmethod=  glm,
-                filtermethod=mRMR.classic_FRESA,
-                filtermethod.control=list(feature_count= fcout),
-                family="binomial"
+                featureSelectionFunction=univariate_cox,
+
 )
+
 bpDecor <- predictionStats_binary(cvDe$medianTest,"Decorrelated",cex=0.75)
 
 par(op)
@@ -358,12 +417,15 @@ for (dx in names(deFromula))
 orgnamez <- rownames(finalTable)
 orgnamez <- str_remove_all(orgnamez,"Ba_")
 orgnamez <- str_remove_all(orgnamez,"De_")
-finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
+finalTable$pvalue <- pnorm(abs(finalTable$ZGLM),lower.tail = FALSE)
+finalTable$uZGLM <- univar$orderframe[orgnamez,"ZGLM"]
 finalTable$raw_Freq <- crawtopf[orgnamez]
 finalTable$de_Freq <- cdetopf[orgnamez]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
-finalTable <- finalTable[order(-finalTable$ROCAUC),]
-
+finalTable <- finalTable[order(finalTable$pvalue),]
+finalTable$ROCAUC <- NULL
+finalTable$kendall.p <- NULL
 pander::pander(finalTable)
 ```
+
 

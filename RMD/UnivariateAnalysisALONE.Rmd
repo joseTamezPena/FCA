@@ -1,5 +1,5 @@
 ---
-title: "Univariate: GRAVIER"
+title: "Univariate: ALONE"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
 ```
 
-# GRAVIER Univariate
+# ALONE Univariate
 
 ### Loading the libraries
 
@@ -41,12 +41,19 @@ pander::panderOptions('keep.trailing.zeros',TRUE)
 
 
 ```{r}
-data('gravier', package = 'datamicroarray')
-table(gravier$y)
+data('alon', package = 'datamicroarray')
+table(alon$y)
+min(alon$x)
 
-gravierset <- as.data.frame(cbind(class=1*(gravier$y=="poor"),gravier$x))
+alon$x <- apply(alon$x+1,2,log)
 
-gravier <- NULL
+alondataset <- as.data.frame(cbind(V1= 1*(alon$y == "n"),alon$x))
+alon <- NULL
+colnames(alondataset) <- str_replace_all(colnames(alondataset),"-","_")
+colnames(alondataset) <- str_replace_all(colnames(alondataset),"/","_")
+colnames(alondataset) <- paste("x",colnames(alondataset),sep="_")
+table(alondataset$x_V1)
+alon <- NULL;
 
 
 
@@ -54,8 +61,8 @@ gravier <- NULL
 #### Standarize the names for the reporting
 
 ```{r results = "asis"}
-dataframe <- gravierset
-outcome <- "class"
+dataframe <- alondataset
+outcome <- "x_V1"
 
 ```
 
@@ -95,28 +102,10 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 
 ```
 
-
-### ROC plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
-topvar <- univar$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),dataframe,family="binomial");
-pmod <- predict(cmod,dataframe)
-
-
-perd <- cbind(dataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
-
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
-
-```
-
-
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
 
 
 
@@ -198,23 +187,6 @@ pander::pander(univarDe$orderframe[1:20,univariate_columns])
 
 ```
 
-
-### ROC plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
-topvar <- univarDe$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),DEdataframe,family="binomial");
-pmod <- predict(cmod,DEdataframe)
-
-
-perd <- cbind(DEdataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
-
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
-
-```
-
-
 ### Comparing Decorrelation vs Original
 
 ```{r results = "asis"}
@@ -245,7 +217,7 @@ pander::pander(c(NumberofFeatures=fcout))
 cvRaw <- randomCV(dataframe,
                 outcome,
                 fittingFunction= filteredFit,
-                classSamplingType = "Pro",
+                classSamplingType = "LOO",
                 trainFraction = fraction,
                 repetitions = repetitions,
                 fitmethod=  glm,

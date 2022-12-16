@@ -1,5 +1,5 @@
 ---
-title: "Univariate: TADPOLE"
+title: "TADPOLE_CCA"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -16,6 +16,7 @@ editor_options:
 ---
 
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
@@ -28,24 +29,19 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 ```{r}
 library("FRESA.CAD")
 library(readxl)
+library("whitening")
 op <- par(no.readonly = TRUE)
 pander::panderOptions('digits', 3)
 pander::panderOptions('table.split.table', 400)
 pander::panderOptions('keep.trailing.zeros',TRUE)
 
 ```
-
-
-
-## The Data
-
-
 ## The data set
 
 ```{r}
-TADPOLE_D1_D2 <- read.csv("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2.csv")
-TADPOLE_D1_D2_Dict <- read.csv("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2_Dict.csv")
-TADPOLE_D1_D2_Dict_LR <- as.data.frame(read_excel("~/GitHub/FCA/Data/TADPOLE/TADPOLE_D1_D2_Dict_LR.xlsx",sheet = "LeftRightFeatures"))
+TADPOLE_D1_D2 <- read.csv("~/GitHub/BSWiMS/Data/TADPOLE/TADPOLE_D1_D2.csv")
+TADPOLE_D1_D2_Dict <- read.csv("~/GitHub/BSWiMS/Data/TADPOLE/TADPOLE_D1_D2_Dict.csv")
+TADPOLE_D1_D2_Dict_LR <- as.data.frame(read_excel("~/GitHub/BSWiMS/Data/TADPOLE/TADPOLE_D1_D2_Dict_LR.xlsx",sheet = "LeftRightFeatures"))
 
 
 rownames(TADPOLE_D1_D2_Dict) <- TADPOLE_D1_D2_Dict$FLDNAME
@@ -115,66 +111,22 @@ validBaselineTadpole$Entorhinal=validBaselineTadpole$Entorhinal/validBaselineTad
 validBaselineTadpole$Fusiform=validBaselineTadpole$Fusiform/validBaselineTadpole$ICV
 validBaselineTadpole$MidTemp=validBaselineTadpole$MidTemp/validBaselineTadpole$ICV
 
-leftData <- validBaselineTadpole[,LeftFields]
-RightData <- validBaselineTadpole[,RightFields]
-#leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
-#RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
+leftData <- validBaselineTadpole[,LeftFields]/validBaselineTadpole$ICV
+RightData <- validBaselineTadpole[,RightFields]/validBaselineTadpole$ICV
 
 ## get mean and relative difference 
 meanLeftRight <- (leftData + RightData)/2
 difLeftRight <- abs(leftData - RightData)
-
-minLeftRight <- pmin(leftData,RightData)
-maxLeftRight <- pmax(leftData,RightData)
-
 reldifLeftRight <- difLeftRight/meanLeftRight
-#minreldifLeftRight <- difLeftRight/minLeftRight
-#maxreldifLeftRight <- difLeftRight/maxLeftRight
-maxMinRatio <- minLeftRight/maxLeftRight
-
-
-colnames(minLeftRight) <- paste("Min",colnames(minLeftRight),sep="_")
-colnames(maxLeftRight) <- paste("Max",colnames(maxLeftRight),sep="_")
 colnames(meanLeftRight) <- paste("M",colnames(meanLeftRight),sep="_")
 colnames(difLeftRight) <- paste("D",colnames(difLeftRight),sep="_")
 colnames(reldifLeftRight) <- paste("RD",colnames(reldifLeftRight),sep="_")
-colnames(maxMinRatio) <- paste("mMR",colnames(maxMinRatio),sep="_")
-#colnames(minreldifLeftRight) <- paste("miMR",colnames(minreldifLeftRight),sep="_")
-#colnames(maxreldifLeftRight) <- paste("maMR",colnames(maxreldifLeftRight),sep="_")
 
-#hist(maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
-#hist(1.0/maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
-#hist(log(1.0e6/maxMinRatio$mMR_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16+1))
-
-#hist(reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
-#hist(1.0/reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16)
-#hist(log(1.0e6/reldifLeftRight$RD_ST32TA_UCSFFSX_11_02_15_UCSFFSX51_08_01_16+1))
-
-
-meanLeftRight <- meanLeftRight/validBaselineTadpole$ICV
-minLeftRight <- minLeftRight/validBaselineTadpole$ICV
-maxLeftRight <- maxLeftRight/validBaselineTadpole$ICV
-#difLeftRight <- log10(1.0e6*difLeftRight + 1.0)
-#reldifLeftRight <- log10(1.0e6/(1.0e-6+reldifLeftRight) + 1.0)
-#maxMinRatio <- log10(1.0e6/(1.0e-6+maxMinRatio) + 1.0)
-#minreldifLeftRight <- log10(1.0e6/(1.0e-6+minreldifLeftRight) + 1.0)
-#maxreldifLeftRight <- log10(1.0e6/(1.0e-6+maxreldifLeftRight) + 1.0)
 
 validBaselineTadpole <- validBaselineTadpole[,!(colnames(validBaselineTadpole) %in% 
                                                c(LeftFields,RightFields))]
 #validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,reldifLeftRight)
-#validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
-
-validBaselineTadpole <- cbind(validBaselineTadpole,
-                              meanLeftRight,
-                              difLeftRight,
-#                              maxLeftRight,
-#                              minLeftRight,
-                              reldifLeftRight,
-                              maxMinRatio
-#                              minreldifLeftRight,
-#                              maxreldifLeftRight
-                              )
+validBaselineTadpole <- cbind(validBaselineTadpole,meanLeftRight,difLeftRight)
 
 ## Remove columns with too many NA more than %15 of NA
 nacount <- apply(is.na(validBaselineTadpole),2,sum)/nrow(validBaselineTadpole) < 0.15
@@ -209,20 +161,93 @@ validBaselineTadpole <- validBaselineTadpole[validBaselineTadpole$DX %in% validD
 validBaselineTadpole$DX <- as.factor(validBaselineTadpole$DX)
 pander::pander(table(validBaselineTadpole$DX))
 
-TADPOLECrossMRI <- subset(validBaselineTadpole,DX == "Dementia" | DX == "MCI")
-table(TADPOLECrossMRI$DX)
 
-TADPOLECrossMRI$DX <- 1*(as.character(TADPOLECrossMRI$DX) == "Dementia")
-table(TADPOLECrossMRI$DX)
-TADPOLECrossMRI$ADAS13 <- NULL
-TADPOLECrossMRI$ADAS11 <- NULL
-TADPOLECrossMRI$MMSE <- NULL
-TADPOLECrossMRI$RAVLT_immediate <- NULL
-TADPOLECrossMRI$RAVLT_learning <- NULL
-TADPOLECrossMRI$RAVLT_perc_forgetting <- NULL
-TADPOLECrossMRI$RAVLT_forgetting <- NULL
-TADPOLECrossMRI$FAQ <- NULL
 
+```
+
+## Get the Time To Event on MCI Subjects
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+subjectsID <- rownames(validBaselineTadpole)
+visitsID <- unique(TADPOLE_D1_D2$VISCODE)
+baseDx <- TADPOLE_D1_D2[TADPOLE_D1_D2$VISCODE=="bl",c("PTID","DX","EXAMDATE")]
+rownames(baseDx) <- baseDx$PTID 
+baseDx <- baseDx[subjectsID,]
+lastDx <- baseDx
+toDementia <- baseDx
+table(lastDx$DX)
+hasDementia <- lastDx$PTID[str_detect(lastDx$DX,"Dementia")]
+
+
+for (vid in visitsID)
+{
+  DxValue <- TADPOLE_D1_D2[TADPOLE_D1_D2$VISCODE==vid,c("PTID","DX","EXAMDATE")]
+  rownames(DxValue) <- DxValue$PTID 
+  DxValue <- DxValue[DxValue$PTID %in% subjectsID,]
+  noDX <- DxValue$PTID[nchar(DxValue$DX) < 1]
+  print(length(noDX))
+  DxValue[noDX,] <- lastDx[noDX,]
+  inLast <- lastDx$PTID[lastDx$PTID %in% DxValue$PTID]
+  print(length(inLast))
+  lastDx[inLast,] <- DxValue[inLast,]
+  noDementia <- !(toDementia$PTID %in% hasDementia)
+  toDementia[noDementia,] <- lastDx[noDementia,]
+  hasDementia <- unique(c(hasDementia,lastDx$PTID[str_detect(lastDx$DX,"Dementia")]))
+}
+table(lastDx$DX)
+baseMCI <-baseDx$PTID[baseDx$DX == "MCI"]
+lastDementia <- lastDx$PTID[str_detect(lastDx$DX,"Dementia")]
+lastDementia2 <- toDementia$PTID[str_detect(toDementia$DX,"Dementia")]
+lastNL <- lastDx$PTID[str_detect(lastDx$DX,"NL")]
+
+MCIatBaseline <- baseDx[baseMCI,]
+MCIatEvent <- toDementia[baseMCI,]
+MCIatLast <- lastDx[baseMCI,]
+
+MCIconverters <- MCIatBaseline[baseMCI %in% lastDementia,]
+MCI_No_converters <- MCIatBaseline[!(baseMCI %in% MCIconverters$PTID),]
+MCIconverters$TimeToEvent <- (as.Date(toDementia[MCIconverters$PTID,"EXAMDATE"]) 
+                                   - as.Date(MCIconverters$EXAMDATE))
+
+sum(MCIconverters$TimeToEvent ==0)
+
+
+MCIconverters$AtEventDX <- MCIatEvent[MCIconverters$PTID,"DX"]
+MCIconverters$LastDX <- MCIatLast[MCIconverters$PTID,"DX"]
+
+MCI_No_converters$TimeToEvent <- (as.Date(lastDx[MCI_No_converters$PTID,"EXAMDATE"]) 
+                                   - as.Date(MCI_No_converters$EXAMDATE))
+
+MCI_No_converters$LastDX <- MCIatLast[MCI_No_converters$PTID,"DX"]
+
+MCI_No_converters <- subset(MCI_No_converters,TimeToEvent > 0)
+
+
+
+```
+
+
+# Prognosis MCI to AD Conversion
+
+## the set
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+TrainFraction <- 0.60;
+
+MCIPrognosisIDs <- c(MCIconverters$PTID,MCI_No_converters$PTID)
+
+TADPOLECrossMRI <- validBaselineTadpole[MCIPrognosisIDs,]
+table(TADPOLECrossMRI$DX)
+TADPOLECrossMRI$DX <- NULL
+TADPOLECrossMRI$status <- 1*(rownames(TADPOLECrossMRI) %in% MCIconverters$PTID)
+table(TADPOLECrossMRI$status)
+TADPOLECrossMRI$TimeToEvent <- numeric(nrow(TADPOLECrossMRI))
+TADPOLECrossMRI[MCIconverters$PTID,"TimeToEvent"] <- MCIconverters$TimeToEvent
+TADPOLECrossMRI[MCI_No_converters$PTID,"TimeToEvent"] <- MCI_No_converters$TimeToEvent
+
+boxplot(TADPOLECrossMRI$TimeToEvent~TADPOLECrossMRI$status)
+surTime <- TADPOLECrossMRI$TimeToEvent
+TADPOLECrossMRI$TimeToEvent <- NULL
 
 ```
 
@@ -232,18 +257,18 @@ TADPOLECrossMRI$FAQ <- NULL
 
 ```{r results = "asis"}
 dataframe <- TADPOLECrossMRI
-outcome <- "DX"
+outcome <- "status"
 
 ```
 
-### Data set info
+
 
 ```{r results = "asis"}
 pander::pander(c(rows=nrow(dataframe),col=ncol(dataframe)-1))
 pander::pander(table(dataframe[,outcome]))
 
 varlist <- colnames(dataframe)
-varlist <- varlist[varlist != outcome]
+varlist <- varlist[!(varlist %in% c(outcome,"TimeToEvent"))]
 varlist <- as.data.frame(cbind(name=varlist,desc=varlist))
 
 ```
@@ -253,30 +278,58 @@ varlist <- as.data.frame(cbind(name=varlist,desc=varlist))
 
 ```{r results = "asis"}
 
-univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","cohortKSP","ROCAUC","WilcoxRes.p","FRes.p")
+univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","cohortKSP","ROCAUC","cStatCorr","kendall.p","ZGLM")
+
+
+dataframeTime <- cbind(dataframe,SurvTime=surTime)
+
+
 univar <- uniRankVar(varlist,
-	           paste(outcome,"~1"),
+	           paste("Surv(SurvTime,",outcome,")~1"),
 	           outcome,
-	           dataframe,
+	           dataframeTime,
 	           categorizationType = "Raw",
-	           type = "LOGIT",
-	           rankingTest = "AUC",
-	            cateGroups = c(0.1, 0.9),
-	            raw.dataFrame = NULL,
-	            description = ".",
-	            uniType = "Binary")
+	           type = "COX",
+	           rankingTest = "Ztest",
+	            uniType = "Binary",
+	           timeOutcome="SurvTime")
 
-pander::pander(univar$orderframe[1:60,univariate_columns])
 
+pander::pander(cbind(univar$orderframe[1:20,univariate_columns],pvalue=pnorm(abs(univar$orderframe[1:20,"ZGLM"]),lower.tail = FALSE)))
 topfiveOrg <- rownames(univar$orderframe[1:5,])
 
+
+
+```
+
+### Survival plot of top feature
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+s = Surv(dataframeTime$SurvTime, dataframeTime$status)
+topvar <- univar$orderframe$Name[1]
+cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),dataframeTime);
+pmod <- predict(cmod,dataframeTime,type="lp")
+pmor <- predict(cmod,dataframeTime,type="risk")
+plot(survfit(s ~ pmod>0),main=topvar, xlab = "Years", ylab = "Probability of survival", lty=c(2,1), lwd=2)
+legend("topright", legend = c("High Risk", "Low Risk"), lty =c(1,2), lwd=2)
+pLR=EmpiricalSurvDiff(dataframeTime$SurvTime,dataframeTime$status,pmod>0)
+pander::pander(pLR$pvalue)
+
+
+perdsurvTest <- cbind(dataframeTime$SurvTime,
+                  dataframeTime$status,
+                  pmod,
+                  pmor)
+prSurvTest <- predictionStats_survival(perdsurvTest,topvar)
+
+pander::pander(survdiff(s ~ pmod>0))
 
 ```
 
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
 
 
 
@@ -300,7 +353,6 @@ varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 
 
 ```
-
 
 ### The heat maps.
 
@@ -343,19 +395,47 @@ par(op)
 
 ```{r results = "asis"}
 
-univarDe <- uniRankVar(varlistDe,
-              paste(outcome,"~1"),
-	            outcome,
-              DEdataframe,
-	            categorizationType = "Raw",
-	            type = "LOGIT",
-	            rankingTest = "AUC",
-	            cateGroups = c(0.1, 0.9),
-	            raw.dataFrame = NULL,
-	            description = ".",
-	            uniType = "Binary")
+DEdataframeTime <- cbind(DEdataframe,SurvTime=surTime)
 
-pander::pander(univarDe$orderframe[1:20,univariate_columns])
+#DEdataframe$surTime <- surTime
+
+univarDe <- uniRankVar(varlistDe,
+	           paste("Surv(SurvTime,",outcome,")~1"),
+	           outcome,
+	           DEdataframeTime,
+	           categorizationType = "Raw",
+	           type = "COX",
+	           rankingTest = "Ztest",
+	            uniType = "Binary",
+	           timeOutcome="SurvTime")
+
+
+pander::pander(cbind(univarDe$orderframe[1:20,univariate_columns],pvalue=pnorm(abs(univarDe$orderframe[1:20,"ZGLM"]),lower.tail = FALSE)))
+
+
+
+```
+
+
+### Survival plot of top feature
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+s = Surv(dataframeTime$SurvTime, dataframeTime$status)
+topvar <- univarDe$orderframe$Name[1]
+cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),DEdataframeTime);
+pmod <- predict(cmod,DEdataframeTime,type="lp")
+pmor <- predict(cmod,DEdataframeTime,type="risk")
+plot(survfit(s ~ pmod>0),main=topvar, xlab = "Years", ylab = "Probability of survival", lty=c(2,1), lwd=2)
+legend("topright", legend = c("High Risk", "Low Risk"), lty =c(1,2), lwd=2)
+pLR=EmpiricalSurvDiff(dataframeTime$SurvTime,dataframeTime$status,pmod>0)
+pander::pander(pLR$pvalue)
+
+perdsurvTest <- cbind(dataframeTime$SurvTime,
+                  dataframeTime$status,
+                  pmod,
+                  pmor)
+prSurvTest <- predictionStats_survival(perdsurvTest,topvar)
+
+pander::pander(survdiff(s ~ pmod>0))
 
 ```
 
@@ -367,13 +447,13 @@ pthr <- 0.20/(ncol(dataframe)-1)
 topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<pthr,])
 topDecorNames <- unique(c(topDecorNames,rownames(univarDe$orderframe[1:5,])))
 
+#topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-4,])
 dc <- getDerivedCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
 theDeFormulas <- selectedlist
 ```
-
 
 ## CV ROC Analysis
 
@@ -385,39 +465,59 @@ repetitions <- 100
 
 fcout <- round(fraction*nrow(dataframe)/15+1.0)
 pander::pander(c(NumberofFeatures=fcout))
+dataframeTime <- cbind(dataframe,SurvTime=surTime)
 
-cvRaw <- randomCV(dataframe,
-                outcome,
-                fittingFunction= filteredFit,
+#cvRaw <- randomCV(dataframe,
+#                theOutcome = outcome,
+#                fittingFunction= filteredFit,
+#                classSamplingType = "Pro",
+#                trainFraction = fraction,
+#                repetitions = repetitions,
+#                fitmethod=  glm,
+#                filtermethod=mRMR.classic_FRESA,
+#                filtermethod.control=list(feature_count= fcout),
+#                family="binomial"
+#)
+uv <- univariate_cox(dataframeTime,formula("Surv(SurvTime,status)~."))
+
+cvRaw <- randomCV(dataframeTime,
+                theOutcome = formula("Surv(SurvTime,status)~."),
+                fittingFunction= coxph,
                 classSamplingType = "Pro",
                 trainFraction = fraction,
                 repetitions = repetitions,
-                fitmethod=  glm,
-                filtermethod=mRMR.classic_FRESA,
-                filtermethod.control=list(feature_count= fcout),
-#                filtermethod=univariate_Wilcoxon,
-#                filtermethod.control=list(pvalue=0.1,limit= fcout,thr=0.9999),
-                family="binomial"
+                featureSelectionFunction=univariate_cox,
+                featureSelection.control=list(limit=fcout,thr=0.9999)
 )
-bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
 
+bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
 
 pander::pander(bpraw$CM.analysis$tab)
 pander::pander(bpraw$accc)
 pander::pander(bpraw$aucs)
 pander::pander(bpraw$berror)
 
-cvDe <- randomCV(DEdataframe,
-                outcome,
-                fittingFunction= filteredFit,
+#cvDe <- randomCV(DEdataframe,
+#                outcome,
+#                fittingFunction= filteredFit,
+#                trainSampleSets= cvRaw$trainSamplesSets,
+#                fitmethod=  glm,
+#                filtermethod=mRMR.classic_FRESA,
+#                filtermethod.control=list(feature_count= fcout),
+#                family="binomial",
+#
+#)
+
+dataframeTime <- cbind(DEdataframe,SurvTime=surTime)
+cvDe <- randomCV(dataframeTime,
+                theOutcome = formula("Surv(SurvTime,status)~."),
+                fittingFunction= coxph,
                 trainSampleSets= cvRaw$trainSamplesSets,
-                fitmethod=  glm,
-                filtermethod=mRMR.classic_FRESA,
-                filtermethod.control=list(feature_count= fcout),
-#                filtermethod=univariate_Wilcoxon,
-#                filtermethod.control=list(pvalue=0.005,limit= fcout,thr=0.9999),
-                family="binomial"
+                featureSelectionFunction=univariate_cox,
+                featureSelection.control=list(limit=fcout,thr=0.9999)
+
 )
+
 bpDecor <- predictionStats_binary(cvDe$medianTest,"Decorrelated",cex=0.75)
 
 par(op)
@@ -506,12 +606,14 @@ for (dx in names(deFromula))
 orgnamez <- rownames(finalTable)
 orgnamez <- str_remove_all(orgnamez,"Ba_")
 orgnamez <- str_remove_all(orgnamez,"De_")
-finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
+finalTable$pvalue <- pnorm(abs(finalTable$ZGLM),lower.tail = FALSE)
+finalTable$uZGLM <- univar$orderframe[orgnamez,"ZGLM"]
 finalTable$raw_Freq <- crawtopf[orgnamez]
 finalTable$de_Freq <- cdetopf[orgnamez]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
-finalTable <- finalTable[order(-finalTable$ROCAUC),]
-
+finalTable <- finalTable[order(finalTable$pvalue),]
+finalTable$ROCAUC <- NULL
+finalTable$kendall.p <- NULL
 pander::pander(finalTable)
 ```
 

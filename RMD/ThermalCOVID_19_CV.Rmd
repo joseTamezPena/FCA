@@ -385,6 +385,24 @@ legend("bottomleft",legend=c("raw", "2nd Deriv","De: Parent","De: w>0"),
 
 ```
 
+```{r}
+
+bm <- BSWiMS.model(class~.,deThermal)
+bm$bagging$nnmodel$coefficients
+bm$bagging$bagged.model$coefficients
+
+p1 <- predict(bm,deThermal)
+deThermal2 <- deThermal
+p2 <- predict(bm$bagging$nnmodel,deThermal2)
+class(bm)
+class(bm$bagging$nnmodel)
+
+plot(p1,p2)
+bpraw <- predictionStats_binary(cbind(deThermal$class,p1),"BSWiMS RAW",cex=0.60)
+bpraw <- predictionStats_binary(cbind(deThermal$class,p2),"BSWiMS RAW",cex=0.60)
+
+
+```
 
 
 ### Holdout Cross-Validation

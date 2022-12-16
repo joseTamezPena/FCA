@@ -1,5 +1,5 @@
 ---
-title: "Univariate: GRAVIER"
+title: "Univariate: GI"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
 ```
 
-# GRAVIER Univariate
+# GI Univariate
 
 ### Loading the libraries
 
@@ -37,24 +37,48 @@ pander::panderOptions('keep.trailing.zeros',TRUE)
 
 
 
-## The Data
+### Data Loading
+
+Source:
+https://archive.ics.uci.edu/ml/datasets/Gastrointestinal+Lesions+in+Regular+Colonoscopy
+
 
 
 ```{r}
-data('gravier', package = 'datamicroarray')
-table(gravier$y)
 
-gravierset <- as.data.frame(cbind(class=1*(gravier$y=="poor"),gravier$x))
 
-gravier <- NULL
+GI_Cancer <- as.data.frame(read_excel("~/GitHub/FCA/Data/GI/data.xlsx", sheet = "Sheet1"))
 
+GI_Cancer_1 <- subset(GI_Cancer,V2==1)
+GI_Cancer_1$V2 <- NULL
+rownames(GI_Cancer_1) <- GI_Cancer_1$ID
+GI_Cancer_1$ID <- NULL
+GI_Class <- GI_Cancer_1$V1
+GI_Cancer_1$class <- GI_Class
+GI_Cancer_1$V1 <- NULL
+
+GI_Cancer_2 <- subset(GI_Cancer,V2==2)
+GI_Cancer_2$V2 <- NULL
+rownames(GI_Cancer_2) <- GI_Cancer_2$ID
+GI_Cancer_2$ID <- NULL
+GI_Cancer_2$V1 <- NULL
+colnames(GI_Cancer_2) <- paste("NBI",colnames(GI_Cancer_2),sep="_")
+
+GI_Cancer <- cbind(GI_Cancer_1,GI_Cancer_2)
+
+table(GI_Cancer$class)
+
+GI_Cancer$class <- 1*(GI_Cancer$class==1)
+
+table(GI_Cancer$class)
 
 
 ```
+
 #### Standarize the names for the reporting
 
 ```{r results = "asis"}
-dataframe <- gravierset
+dataframe <- GI_Cancer
 outcome <- "class"
 
 ```
@@ -95,28 +119,10 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 
 ```
 
-
-### ROC plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
-topvar <- univar$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),dataframe,family="binomial");
-pmod <- predict(cmod,dataframe)
-
-
-perd <- cbind(dataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
-
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
-
-```
-
-
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
 
 
 
@@ -198,23 +204,6 @@ pander::pander(univarDe$orderframe[1:20,univariate_columns])
 
 ```
 
-
-### ROC plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
-topvar <- univarDe$orderframe$Name[1]
-cmod <- glm(formula(paste(outcome,"~",topvar)),DEdataframe,family="binomial");
-pmod <- predict(cmod,DEdataframe)
-
-
-perd <- cbind(DEdataframe[,outcome],pmod)
-prSurvTest <- predictionStats_binary(perd,topvar)
-
-pander::pander(prSurvTest$CM.analysis$tab)
-pander::pander(prSurvTest$aucs)
-
-```
-
-
 ### Comparing Decorrelation vs Original
 
 ```{r results = "asis"}
@@ -237,7 +226,7 @@ theDeFormulas <- selectedlist
 par(op)
 par(mfrow=c(1,2),cex=0.9)
 fraction <-0.80
-repetitions <- 100
+repetitions <- 200
 
 fcout <- round(fraction*nrow(dataframe)/15+1.0)
 pander::pander(c(NumberofFeatures=fcout))

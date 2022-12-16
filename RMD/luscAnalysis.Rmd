@@ -24,9 +24,9 @@ names(lusc)
 
 #luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),log(lusc$methyl+1.0),sex=lusc$sex,packs=lusc$packs,survtime=lusc$survivalTime,status=lusc$censoringStatus))
 
-#luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),log(lusc$methyl+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
+luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),log(lusc$methyl+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
 
-luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
+#luscdataset <- as.data.frame(cbind(log(lusc$rnaseq2+1.0),sex=lusc$sex,survtime=lusc$survivalTime,status=lusc$censoringStatus))
 
 rluscdataset <- luscdataset[complete.cases(luscdataset),]
 rluscdataset[,1:ncol(rluscdataset)] <- sapply(rluscdataset,as.numeric)

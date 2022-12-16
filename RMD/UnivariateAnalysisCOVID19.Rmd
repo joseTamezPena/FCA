@@ -237,12 +237,27 @@ cvRaw <- randomCV(dataframe,
                 family="binomial"
 )
 bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
-
-
 pander::pander(bpraw$CM.analysis$tab)
 pander::pander(bpraw$accc)
 pander::pander(bpraw$aucs)
 pander::pander(bpraw$berror)
+
+
+cvRawW <- randomCV(dataframe,
+                outcome,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvRaw$trainSamplesSets,
+                fitmethod=  glm,
+                filtermethod=univariate_Wilcoxon,
+                filtermethod.control=list(pvalue=1.0,limit= fcout,thr=0.9999),
+                family="binomial"
+)
+bprawW <- predictionStats_binary(cvRawW$medianTest,"RAW",cex=0.75)
+pander::pander(bprawW$CM.analysis$tab)
+pander::pander(bprawW$accc)
+pander::pander(bprawW$aucs)
+pander::pander(bprawW$berror)
+
 
 cvDe <- randomCV(DEdataframe,
                 outcome,
@@ -254,17 +269,34 @@ cvDe <- randomCV(DEdataframe,
                 family="binomial"
 )
 bpDecor <- predictionStats_binary(cvDe$medianTest,"Decorrelated",cex=0.75)
-
-par(op)
-
 pander::pander(bpDecor$CM.analysis$tab)
 pander::pander(bpDecor$accc)
 pander::pander(bpDecor$aucs)
 pander::pander(bpDecor$berror)
 
+cvDeW <- randomCV(DEdataframe,
+                outcome,
+                fittingFunction= filteredFit,
+                trainSampleSets= cvRaw$trainSamplesSets,
+                fitmethod=  glm,
+                filtermethod=univariate_Wilcoxon,
+                filtermethod.control=list(pvalue=1.0,limit= fcout,thr=0.9999),
+                family="binomial"
+)
+bpDecorW <- predictionStats_binary(cvDeW$medianTest,"Decorrelated",cex=0.75)
+pander::pander(bpDecorW$CM.analysis$tab)
+pander::pander(bpDecorW$accc)
+pander::pander(bpDecorW$aucs)
+pander::pander(bpDecorW$berror)
+
+par(op)
+
+
 ### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
 pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
 
+### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
+pander::pander(roc.test(bpDecorW$ROC.analysis$roc.predictor,bprawW$ROC.analysis$roc.predictor,alternative = "greater"))
 
 ```
 
