@@ -119,7 +119,8 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.90,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
 
 demat <- attr(DEdataframe,"GDSTM")
 
@@ -219,10 +220,10 @@ theDeFormulas <- selectedlist
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
 par(op)
 par(mfrow=c(1,2),cex=0.9)
-fraction <-0.80
+fraction <-0.90
 repetitions <- 100
 
-fcout <- round(fraction*nrow(dataframe)/15+1.0)
+fcout <- round(fraction*nrow(dataframe)/10+1.0)
 pander::pander(c(NumberofFeatures=fcout))
 
 cvRaw <- randomCV(dataframe,
@@ -280,7 +281,7 @@ cvDeW <- randomCV(DEdataframe,
                 trainSampleSets= cvRaw$trainSamplesSets,
                 fitmethod=  glm,
                 filtermethod=univariate_Wilcoxon,
-                filtermethod.control=list(pvalue=1.0,limit= fcout,thr=0.9999),
+                filtermethod.control=list(pvalue=0.20,limit= fcout,thr=0.9999),
                 family="binomial"
 )
 bpDecorW <- predictionStats_binary(cvDeW$medianTest,"Decorrelated",cex=0.75)

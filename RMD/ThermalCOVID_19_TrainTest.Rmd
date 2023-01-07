@@ -102,7 +102,7 @@ SalivaThermal_set1$Ct <- NULL
 SalivaThermal_set1$class <- 1*(str_detect(rownames(SalivaThermal_set1),"P"))
 ##The fraction of samples in the training set
 pander::pander(table(SalivaThermal_set1$class))
-trainFraction=0.95
+trainFraction=0.65
 
 ```
 
@@ -134,11 +134,11 @@ I compute a decorrelated version of the training and testing sets using the *GDS
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 ## The GDSTM transformation driven by the Outcome
-deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE)
+deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE,corRank=FALSE)
 deTest <- predictDecorrelate(deTrain,testSet)
 
 ## The GDSTM transformation without outcome
-deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE)
+deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE,corRank=FALSE)
 deTestU <- predictDecorrelate(deTrainU,testSet)
 
 ```
@@ -149,6 +149,7 @@ The heat map of the testing set.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 cormat <- cor(deTest,method="spearman")
+cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
                   scale = "none",

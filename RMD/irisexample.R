@@ -10,8 +10,11 @@ names(colors) <- names(table(iris$Species))
 classcolor <- colors[iris$Species]
 
 ## Unsupervised FCA Decorrelation at 0.25 threshold, pearson and fast estimation 
-system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25))
+system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25,verbose = TRUE))
 GDSTM <- attr(irisDecor,"GDSTM")
+
+apply(GDSTM!=0,2,sum)
+
 print(GDSTM)
 write.csv(GDSTM,"unGDSTM.csv")
 
@@ -120,41 +123,41 @@ plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Supervised FCA IRIS")
 ## Plotting the histograms of the features
 par(mfrow=c(2,3))
 h <- hist(iris$Sepal.Length,main="Raw: Sepal Lenght")
-h <- hist(irisDecor$De_Sepal.Length,main="Unsup_FCA: Sepal Lenght")
-h <- hist(irisDecorOutcome$De_Sepal.Length,main="Sup_FCA: Sepal Lenght")
+h <- hist(irisDecor$La_Sepal.Length,main="Unsup_FCA: Sepal Lenght")
+h <- hist(irisDecorOutcome$La_Sepal.Length,main="Sup_FCA: Sepal Lenght")
 
 h <- hist(iris$Sepal.Width,main="Raw: Sepal Width")
-h <- hist(irisDecor$De_Sepal.Width,main="Unsup_FCA: Sepal Width")
-h <- hist(irisDecorOutcome$De_Sepal.Width,main="Sup_FCA: Sepal Width")
+h <- hist(irisDecor$La_Sepal.Width,main="Unsup_FCA: Sepal Width")
+h <- hist(irisDecorOutcome$La_Sepal.Width,main="Sup_FCA: Sepal Width")
 
 h <- hist(iris$Petal.Length,main="Raw: Petal Length")
 h <- hist(irisDecor$Ba_Petal.Length,main="Unsup_FCA: Petal Length")
-h <- hist(irisDecorOutcome$De_Petal.Length,main="Sup_FCA: Petal Length")
+h <- hist(irisDecorOutcome$La_Petal.Length,main="Sup_FCA: Petal Length")
 
 h <- hist(iris$Petal.Width,main="Raw: Petal Width")
-h <- hist(irisDecor$De_Petal.Width,main="Unsup_FCA: Petal Width")
+h <- hist(irisDecor$La_Petal.Width,main="Unsup_FCA: Petal Width")
 h <- hist(irisDecorOutcome$Ba_Petal.Width,main="Sup_FCA: Petal Width")
 
 ## Box plots to compare the feature distributions among decorrelation schemes
 par(mfrow=c(2,2))
 boxplot(cbind(Raw=iris$Sepal.Length,
-              Unsup_FCA=irisDecor$De_Sepal.Length,
-              Sup_FCA=irisDecorOutcome$De_Sepal.Length),
+              Unsup_FCA=irisDecor$La_Sepal.Length,
+              Sup_FCA=irisDecorOutcome$La_Sepal.Length),
        main="Sepal Length")
 
 boxplot(cbind(Raw=iris$Sepal.Width,
-              Unsup_FCA=irisDecor$De_Sepal.Width,
-              Sup_FCA=irisDecorOutcome$De_Sepal.Width),
+              Unsup_FCA=irisDecor$La_Sepal.Width,
+              Sup_FCA=irisDecorOutcome$La_Sepal.Width),
         main="Sepal Width")
 
 
 boxplot(cbind(Raw=iris$Petal.Length,
               Unsup_FCA=irisDecor$Ba_Petal.Length,
-              Sup_FCA=irisDecorOutcome$De_Petal.Length),
+              Sup_FCA=irisDecorOutcome$La_Petal.Length),
         main="Petal Length")
 
 boxplot(cbind(Raw=iris$Petal.Width,
-              Unsup_FCA=irisDecor$De_Petal.Width,
+              Unsup_FCA=irisDecor$La_Petal.Width,
               Sup_FCA=irisDecorOutcome$Ba_Petal.Width),
         main="Petal Width")
 
@@ -166,12 +169,12 @@ boxplot(iris$Sepal.Length~iris$Species,
         ylab="Sepal Length",
         main="Raw: Sepal Length")
 
-boxplot(irisDecor$De_Sepal.Length~iris$Species,
+boxplot(irisDecor$La_Sepal.Length~iris$Species,
         notch=TRUE,
         ylab="De Sepal Length",
         main="Un_Decor: Sepal Length")
 
-boxplot(irisDecorOutcome$De_Sepal.Length~iris$Species,
+boxplot(irisDecorOutcome$La_Sepal.Length~iris$Species,
         notch=TRUE,
         ylab="De Sepal Length",
         main="Sup_Decor: Sepal Length")
@@ -187,7 +190,7 @@ boxplot(irisDecor$Ba_Petal.Length~iris$Species,
         ylab="Petal Length",
         main="Un_Decor: Petal Length")
 
-boxplot(irisDecorOutcome$De_Petal.Length~iris$Species,
+boxplot(irisDecorOutcome$La_Petal.Length~iris$Species,
         notch=TRUE,
         ylab="De Petal Length",
         main="Sup_Decor: Petal Length")
@@ -197,12 +200,12 @@ boxplot(iris$Sepal.Width~iris$Species,
         ylab="Sepal Width",
         main="Raw: Sepal Width")
 
-boxplot(irisDecor$De_Sepal.Width~iris$Species,
+boxplot(irisDecor$La_Sepal.Width~iris$Species,
         notch=TRUE,
         ylab="De Sepal Width",
         main="Un_Decor: Sepal Width")
 
-boxplot(irisDecorOutcome$De_Sepal.Width~iris$Species,
+boxplot(irisDecorOutcome$La_Sepal.Width~iris$Species,
         notch=TRUE,
         ylab="De Sepal Width",
         main="Sup_Decor: Sepal Width")
@@ -212,7 +215,7 @@ boxplot(iris$Petal.Width~iris$Species,
         ylab="Petal Width",
         main="Raw: Petal Width")
 
-boxplot(irisDecor$De_Petal.Width~iris$Species,
+boxplot(irisDecor$La_Petal.Width~iris$Species,
         notch=TRUE,
         ylab="De Petal Width",
         main="Un_Decor: Petal Width")

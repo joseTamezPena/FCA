@@ -122,7 +122,8 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
 
 
 

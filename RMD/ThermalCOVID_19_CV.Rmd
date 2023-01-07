@@ -159,7 +159,8 @@ gplots::heatmap.2(abs(cormat),
                   key.xlab="Spearman Correlation",
                   xlab="Feature", ylab="Feature")
 
-deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.90,verbose = TRUE,skipRelaxed=FALSE)
+#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
 #deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
 #deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
 

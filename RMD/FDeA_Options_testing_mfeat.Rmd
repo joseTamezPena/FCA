@@ -156,7 +156,7 @@ The output features after transformation will be named after the original names 
 
 -   The name will have the "Ba\_" prefix is the feature was correlated but used as unaltered basis
 
--   The name will have the "De\_" prefix is the feature was original correlated and its correlation to "Ba\_" features has been removed.
+-   The name will have the "La\_" prefix is the feature was original correlated and its correlation to "Ba\_" features has been removed. Hence a latent variable.
 
 Furthermore, the returned data frame will have the following attributes:
 
@@ -216,11 +216,11 @@ The **FCA** analysis of the data features are stored in three attributes: "*vari
 -   "fscore" : returns a named vector with the total feature score, $F_j$, of the analyzed features.
 
 $$
-F_j=∑_{n}∑_{i∈B^{n}_{j}}|ρ_{i,j}|^2(|ρ_{i,j}|>ρ_{th}),~ \forall j \in Ind
+F_j=∑_{n}∑_{i∈B^{n}_{j}}(|ρ_{i,j}|>ρ_{th}),~ \forall j \in Ind
 $$
 
 $$
-F_j=F_j-∑_{n}|ρ_{B^n_j,j}|^2),~ \forall j \in Dep
+F_j=F_j-∑_{n}|ρ_{B^n_j,j}| > ρ_{th} ,~ \forall j \in Dep
 $$
 
 where $B^n_j$ is the set of features statistically associated with feature *j* at iteration *n,* $ρ_{i,j}$ is the correlation between features *i,j*, and $ρ_{th}$ is the correlation goal, ${Ind, Dep}$ are the set of independent and dependent features respectively. In other words, the "*fscore"* indicates the degree of total association of"independent" features to dependent features.

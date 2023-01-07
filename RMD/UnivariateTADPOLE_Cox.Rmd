@@ -1,5 +1,5 @@
 ---
-title: "TADPOLE_CCA"
+title: "TADPOLE_Survival"
 author: "Jose Tamez"
 date: "`r Sys.Date()`"
 output: 
@@ -71,11 +71,12 @@ FreeSurfersetCross <- str_detect(colnames(TADPOLE_D1_D2),"UCSFFSX")
 # The subset of baseline measurements
 baselineTadpole <- subset(TADPOLE_D1_D2,VISCODE=="bl")
 table(baselineTadpole$DX)
+table(baselineTadpole$DX_bl)
 
 rownames(baselineTadpole) <- baselineTadpole$PTID
 
 
-validBaselineTadpole <- cbind(DX=baselineTadpole$DX,
+validBaselineTadpole <- cbind(DX=baselineTadpole$DX_bl,
                                  AGE=baselineTadpole$AGE,
                                  Gender=1*(baselineTadpole$PTGENDER=="Female"),
                                  ADAS11=baselineTadpole$ADAS11,
@@ -155,10 +156,14 @@ validBaselineTadpole$DX <- diagnose
 pander::pander(table(validBaselineTadpole$DX))
 
 
-validDX <- c("NL","MCI","Dementia")
+#validDX <- c("NL","MCI","Dementia")
 
-validBaselineTadpole <- validBaselineTadpole[validBaselineTadpole$DX %in% validDX,]
-validBaselineTadpole$DX <- as.factor(validBaselineTadpole$DX)
+#validBaselineTadpole <- validBaselineTadpole[validBaselineTadpole$DX %in% validDX,]
+#validBaselineTadpole$DX <- as.factor(validBaselineTadpole$DX)
+
+validBaselineTadpole[validBaselineTadpole$DX %in% c("EMCI","LMCI"),"DX"] <- "MCI" 
+validBaselineTadpole[validBaselineTadpole$DX %in% c("CN","SMC"),"DX"] <- "NL" 
+
 pander::pander(table(validBaselineTadpole$DX))
 
 
@@ -278,7 +283,7 @@ varlist <- as.data.frame(cbind(name=varlist,desc=varlist))
 
 ```{r results = "asis"}
 
-univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","cohortKSP","ROCAUC","cStatCorr","kendall.p","ZGLM")
+univariate_columns <- c("caseMean","caseStd","controlMean","controlStd","controlKSP","ROCAUC","cStatCorr","kendall.p","ZGLM")
 
 
 dataframeTime <- cbind(dataframe,SurvTime=surTime)
@@ -486,8 +491,8 @@ cvRaw <- randomCV(dataframeTime,
                 classSamplingType = "Pro",
                 trainFraction = fraction,
                 repetitions = repetitions,
-                featureSelectionFunction=univariate_cox,
-                featureSelection.control=list(limit=fcout,thr=0.9999)
+                featureSelectionFunction=univariate_Logit,
+                featureSelection.control=list(limit=fcout,thr=0.90)
 )
 
 bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
@@ -513,8 +518,8 @@ cvDe <- randomCV(dataframeTime,
                 theOutcome = formula("Surv(SurvTime,status)~."),
                 fittingFunction= coxph,
                 trainSampleSets= cvRaw$trainSamplesSets,
-                featureSelectionFunction=univariate_cox,
-                featureSelection.control=list(limit=fcout,thr=0.9999)
+                featureSelectionFunction=univariate_Logit,
+                featureSelection.control=list(limit=fcout,thr=0.90)
 
 )
 

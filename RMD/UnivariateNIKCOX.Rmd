@@ -123,7 +123,7 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ```
 
 ### Survival plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 8.0}
 s = Surv(dataframeTime$SurvTime, dataframeTime$status)
 topvar <- univar$orderframe$Name[1]
 cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),dataframeTime);
@@ -148,7 +148,11 @@ pander::pander(survdiff(s ~ pmod>0))
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.80,verbose = TRUE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
 #DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="RLM",thr=0.50,verbose = TRUE)
 #DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE)
 
@@ -159,11 +163,11 @@ demat <- attr(DEdataframe,"GDSTM")
 pander::pander(c(Cols=ncol(demat),Rows=nrow(demat)))
 totFe <- ncol(DEdataframe)-1
 totBa <- sum(str_detect(colnames(DEdataframe),"Ba_"))
-totDe <- sum(str_detect(colnames(DEdataframe),"De_"))
+totDe <- sum(str_detect(colnames(DEdataframe),"La_"))
 toUnmat <- sum(apply(demat!=0,2,sum)==1)
 unaltered <- totFe - ncol(demat) + toUnmat
 pander::pander(c(Features=totFe,totBa=totBa,totDe=totDe,unaltered=totFe-totBa-totDe,totuna=unaltered))
-pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"De_"))/(ncol(DEdataframe)-1)))
+pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"La_"))/(ncol(DEdataframe)-1)))
 pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
 
 pander::pander(c(Unaltered_Fraction=unaltered/totFe))
@@ -179,7 +183,13 @@ varlistDe <- as.data.frame(cbind(name=varlistDe,desc=varlistDe))
 
 ```{r results = "asis", warning = FALSE, dpi=300, fig.height= 5.0, fig.width= 7.0}
 par(cex=0.6,cex.main=0.85,cex.axis=0.7)
-cormat <- cor(dataframe[,rownames(demat)],method="spearman")
+cnames <- rownames(demat)
+if (length(cnames) > 2000)
+{
+  cnames <- cnames[1:2000]
+}
+
+cormat <- cor(dataframe[,cnames],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -193,8 +203,13 @@ gplots::heatmap.2(abs(cormat),
                   key.xlab="Spearman Correlation",
                   xlab="Feature", ylab="Feature")
 
+cnames <- colnames(demat)
+if (length(cnames) > 2000)
+{
+  cnames <- cnames[1:2000]
+}
 
-cormat <- cor(DEdataframe[,colnames(demat)],method="spearman")
+cormat <- cor(DEdataframe[,cnames],method="spearman")
 cormat[is.na(cormat)] <- 0
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -239,7 +254,7 @@ pander::pander(cbind(univarDe$orderframe[1:20,univariate_columns],pvalue=pnorm(a
 
 
 ### Survival plot of top feature
-```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 6.0}
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 6.0, fig.width= 8.0}
 s = Surv(dataframeTime$SurvTime, dataframeTime$status)
 topvar <- univarDe$orderframe$Name[1]
 cmod <- coxph(formula(paste("Surv(SurvTime, status)~",topvar)),DEdataframeTime);
@@ -291,7 +306,9 @@ dataframeTime$er <- NULL
 dataframeTime$pgr <- NULL
 dataframeTime$her2 <- NULL
 
-uv <- univariate_cox(dataframeTime,formula("Surv(SurvTime,status)~."),limit=fcout,thr=0.9999)
+system.time(uv <- univariate_cox(dataframeTime,formula("Surv(SurvTime,status)~."),limit=fcout,thr=0.90))
+
+system.time(uvl <- univariate_Logit(dataframeTime,formula("Surv(SurvTime,status)~."),limit=fcout,thr=0.90))
 
 
 # cvRaw <- randomCV(dataframe,
@@ -312,8 +329,9 @@ cvRaw <- randomCV(dataframeTime,
                 classSamplingType = "Pro",
                 trainFraction = fraction,
                 repetitions = repetitions,
-                featureSelectionFunction=univariate_cox,
-                featureSelection.control=list(limit=fcout,thr=0.9999)
+#                featureSelectionFunction=univariate_cox,
+                featureSelectionFunction=univariate_Logit,
+                featureSelection.control=list(limit=fcout,thr=0.90)
 )
 
 bpraw <- predictionStats_binary(cvRaw$medianTest,"RAW",cex=0.75)
@@ -335,12 +353,16 @@ pander::pander(bpraw$berror)
 # )
 
 dataframeTime <- cbind(DEdataframe,SurvTime=survivalTime)
+dataframeTime$er <- NULL
+dataframeTime$pgr <- NULL
+dataframeTime$her2 <- NULL
 cvDe <- randomCV(dataframeTime,
                 theOutcome = formula("Surv(SurvTime,status)~."),
                 fittingFunction= coxph,
                 trainSampleSets= cvRaw$trainSamplesSets,
-                featureSelectionFunction=univariate_cox,
-                featureSelection.control=list(limit=fcout,thr=0.9999)
+#                featureSelectionFunction=univariate_cox,
+                featureSelectionFunction=univariate_Logit,
+                featureSelection.control=list(limit=fcout,thr=0.90)
 
 )
 
@@ -375,7 +397,7 @@ barplot(100*rawtopf,las=2,main="Raw Features",ylim=c(0,100.0),cex.names = 0.5,ce
 detopf <- cvDe$featureFrequency/repetitions
 cdetopf <- detopf
 names(cdetopf) <- str_remove_all(names(cdetopf),"Ba_")
-names(cdetopf) <- str_remove_all(names(cdetopf),"De_")
+names(cdetopf) <- str_remove_all(names(cdetopf),"La_")
 if (length(detopf) > 40)
 {
   detopf <- detopf[1:40]
@@ -431,11 +453,11 @@ for (dx in names(deFromula))
 }
 orgnamez <- rownames(finalTable)
 orgnamez <- str_remove_all(orgnamez,"Ba_")
-orgnamez <- str_remove_all(orgnamez,"De_")
+orgnamez <- str_remove_all(orgnamez,"La_")
 finalTable$pvalue <- pnorm(abs(finalTable$ZGLM),lower.tail = FALSE)
 finalTable$uZGLM <- univar$orderframe[orgnamez,"ZGLM"]
 finalTable$raw_Freq <- crawtopf[orgnamez]
-finalTable$de_Freq <- cdetopf[orgnamez]
+finalTable$La_Freq <- cdetopf[orgnamez]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]
 finalTable <- finalTable[order(finalTable$pvalue),]
 finalTable$ROCAUC <- NULL

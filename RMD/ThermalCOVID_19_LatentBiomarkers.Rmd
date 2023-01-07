@@ -1,0 +1,683 @@
+---
+title: "Decorrelation-Based Feature Discovery: Thermal COVID_19"
+author: "Jose Tamez"
+date: "2022-10-02"
+output:
+  html_document: 
+    toc: yes
+    fig_caption: yes
+    number_sections: yes
+  word_document: 
+    reference_docx: WordStyle_FRESA.docx
+    toc: yes
+    fig_caption: yes
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment = "#>")
+
+```
+
+# Effect of GDSTM-Based Decorrelation on Feature Discovery
+
+Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
+
+1.  To improve model performance by uncovering the hidden information between correlated features.
+
+2.  To simplify the interpretation of the machine learning models.
+
+This demo will use:
+
+-   *FRESA.CAD::GDSTMDecorrelation()*. For Decorrelation of Multidimensional data sets
+
+    -   *FRESA.CAD::getDerivedCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
+
+-   *FRESA.CAD::randomCV()* For the cross-validation of the Machine Learning models
+
+-   *FRESA.CAD::BSWiMS.model()*. For the generation of bootstrapped logistic models
+
+    -   *FRESA.CAD::summary()*. For the summary description of the BSWiMS model
+
+-   *FRESA.CAD::predictionStats_binary()*. For describing the performance of the model
+
+-   *heatmap.2()*. For displaying the correlation matrix
+
+-   *igraph::graph_from_adjacency_matrix()*. For the display of the network of BSWiMS formulas
+
+
+### Loading the libraries
+
+```{r}
+library("FRESA.CAD")
+library(readxl)
+library(igraph)
+
+op <- par(no.readonly = TRUE)
+pander::panderOptions('digits', 3)
+pander::panderOptions('table.split.table', 400)
+pander::panderOptions('keep.trailing.zeros',TRUE)
+
+```
+
+## Material and Methods
+
+### Signed Log Transform
+
+The function will be used to transform all the continuous features of the data
+
+```{r}
+signedlog <- function(x) { return (sign(x)*log(abs(x)+1.0e-12))}
+
+```
+
+## Data: The COVID_19 Data-Set
+
+The data to process is described in:
+
+<https://zenodo.org/record/4156647#.Y1bSF3bMKUk>
+
+
+Thermal Saliva Testing Dataset
+
+
+10.5281/zenodo.4156647
+<https://doi.org/10.5281/zenodo.4156647>
+
+
+I added a column to the data identifying the repeated experiments.
+
+```{r}
+
+SalivaThermal <- as.data.frame(read_excel("~/GitHub/FCA/Data/SalivaThermal_Source_Data_2.xlsx"))
+
+
+SalivaThermal_set1 <- subset(SalivaThermal,RepID==1)
+rownames(SalivaThermal_set1) <- SalivaThermal_set1$ID
+SalivaThermal_set1$RepID <- NULL
+SalivaThermal_set1$ID <- NULL
+SalivaThermal_set1$Ct <- NULL
+
+SalivaThermal_set2 <- subset(SalivaThermal,RepID==2)
+rownames(SalivaThermal_set2) <- SalivaThermal_set2$ID
+SalivaThermal_set2$RepID <- NULL
+SalivaThermal_set2$ID <- NULL
+SalivaThermal_set2$Ct <- NULL
+
+SalivaThermal_set3 <- subset(SalivaThermal,RepID==3)
+rownames(SalivaThermal_set3) <- SalivaThermal_set3$ID
+SalivaThermal_set3$RepID <- NULL
+SalivaThermal_set3$ID <- NULL
+SalivaThermal_set3$Ct <- NULL
+
+SalivaThermal_Avg <- (SalivaThermal_set1 + SalivaThermal_set2 + SalivaThermal_set3)/3
+
+SalivaThermal_d1 <- SalivaThermal_Avg[,-1] - SalivaThermal_Avg[,c(1:ncol(SalivaThermal_Avg)-1)]
+#SalivaThermal_d1[,ncol(SalivaThermal_d1)] <- 0
+#plot(apply(SalivaThermal_d1,2,mean))
+SalivaThermal_d2 <-  -SalivaThermal_d1[,c(1:ncol(SalivaThermal_d1)-1)] + SalivaThermal_d1[,-1]
+#SalivaThermal_d2[,ncol(SalivaThermal_d2)] <- 0
+#plot(apply(SalivaThermal_d2,2,mean))
+colnames(SalivaThermal_d2) <- paste("DD",colnames(SalivaThermal_d2),sep="_")
+colnames(SalivaThermal_d1) <- paste("D",colnames(SalivaThermal_d1),sep="_")
+
+colnames(SalivaThermal_Avg) <- paste("V",colnames(SalivaThermal_Avg),sep="_")
+
+#SalivaThermal_Avg <- cbind(SalivaThermal_Avg,SalivaThermal_d1,SalivaThermal_d2)
+#SalivaThermal_Avg <- cbind(SalivaThermal_Avg,SalivaThermal_d1,SalivaThermal_d2)
+#SalivaThermal_Avg <- SalivaThermal_d2
+SalivaThermal_Avg$class <- 1*(str_detect(rownames(SalivaThermal_Avg),"P"))
+##The fraction of samples in the training set
+pander::pander(table(SalivaThermal_Avg$class))
+trainFraction=0.90
+
+SalivaThermal_d2$class <- 1*(str_detect(rownames(SalivaThermal_d2),"P"))
+
+```
+
+
+#### Correlation Matrix of the Decorrelated Test Data
+
+The heat map of the testing set.
+
+```{r results = "asis", warning = FALSE, dpi=300, fig.height= 5.0, fig.width= 7.0}
+
+par(cex=0.6,cex.main=0.85,cex.axis=0.7)
+cormat <- cor(SalivaThermal_Avg[,colnames(SalivaThermal_Avg) != "class"],method="spearman")
+cormat[is.na(cormat)] <- 0
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+#                  scale = "row",
+                  mar = c(5,5),
+                  col=rev(heat.colors(5)),
+                  main = "Thermal Correlation",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
+#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
+
+cormat <- cor(deThermal[,colnames(deThermal) != "class"],method="spearman")
+cormat[is.na(cormat)] <- 0
+gplots::heatmap.2(abs(cormat),
+                  trace = "none",
+#                  scale = "none",
+                  mar = c(5,5),
+                  col=rev(heat.colors(5)),
+                  main = "Correlation after GDSTM",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Spearman Correlation",
+                  xlab="Feature", ylab="Feature")
+
+par(op)
+```
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.5, fig.width= 5.0}
+GDSTM <- attr(deThermal,"GDSTM")
+
+gplots::heatmap.2(log(abs(GDSTM)+1),
+                  trace = "none",
+#                  scale = "none",
+                  mar = c(5,5),
+                  col=rev(heat.colors(5)),
+                  main = "Decorrelation matrix",
+                  cexRow = 0.35,
+                  cexCol = 0.35,
+                  key.title=NA,
+                  key.xlab="Beta",
+                  xlab="Output Feature", ylab="Input Feature")
+
+par(op)
+
+```
+
+### Plots
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 5.0}
+par(mfrow=c(2,1),cex.axis=0.7,cex.main=0.8)
+
+varlist <- colnames(SalivaThermal_Avg)[!(colnames(SalivaThermal_Avg) %in% "class")]
+varlist <- cbind(varlist,varlist)
+
+univar <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           SalivaThermal_Avg,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
+
+cases <- subset(SalivaThermal_Avg,class==1)
+cases$class <- NULL
+controls <- subset(SalivaThermal_Avg,class==0)
+controls$class <- NULL
+colnames(cases) <- str_remove_all(colnames(cases),"V_")
+bpcases <- boxplot(cases,
+                   boxwex=1.25,
+                   outline = FALSE,
+                   col="red",
+                   las=2,
+                   cex.axis=0.5,
+                   ylab="Absorbance (a.u.)",
+                   xlab=expression("Wavenumber (cm)"^"-1"))
+#bpcontrols <- boxplot(controls,col="blue",outline = FALSE,boxwex=0.25,las=2,add = TRUE,cex.axis=0.5)
+lines(apply(controls,2,mean),col="blue",lwd=3)
+title("Absorbance")
+legend("topright",legend=c("Cases", "Controls"),
+       col=c("red", "blue"), lty=1:1,lwd=c(1,3), cex=0.6)
+
+effectSize <- (apply(cases,2,mean)-apply(controls,2,mean))/apply(SalivaThermal_Avg[,str_detect(colnames(SalivaThermal_Avg),"V_")],2,sd)
+wavenumber=as.numeric(str_remove_all(names(effectSize),"V_"))
+
+aucvalue <- univar$orderframe$ROCAUC
+wavenumber=as.numeric(str_remove_all(rownames(univar$orderframe),"V_"))
+aucvalueRaw <- aucvalue[order(wavenumber)]
+wavenumberRaw <- wavenumber[order(wavenumber)]
+bpdiff <- plot(wavenumberRaw,aucvalueRaw,las=2,cex.axis=0.5,type="l",
+                                  ylab="ROC AUC",
+                    xlim = c(1300,800),
+                   xlab=expression("Wavenumber (cm)"^"-1"))
+title("Difference in Absorbance")
+
+
+
+varlist <- colnames(deThermal)[!(colnames(deThermal) %in% "class")]
+varlist <- cbind(varlist,varlist)
+
+univarDe <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           deThermal,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
+
+
+decorfeat <- colnames(deThermal)[str_detect(colnames(deThermal),"De_")]
+parentfeat <- str_remove_all(decorfeat,"De_")
+reldecor <- deThermal[,decorfeat]
+reldecor$class <- SalivaThermal_Avg$class
+cases <- subset(reldecor,class==1)
+cases <- cases[,str_detect(colnames(cases),"De_")]
+colnames(cases) <- str_remove_all(colnames(cases),"De_V_")
+controls <- subset(reldecor,class==0)
+controls <- controls[,str_detect(colnames(controls),"De_")]
+colnames(controls) <- str_remove_all(colnames(controls),"De_V_")
+bpcases <- boxplot(cases,
+                   boxwex=2.0,
+                   outline = FALSE,
+                   col="red",
+                   las=2,
+                   cex.axis=0.5,
+                   ylim=c(-0.075,0.075),
+                   ylab="Absorbance (a.u.)",
+                   xlab=expression("Wavenumber (cm)"^"-1"))
+
+bpcontrols <- boxplot(controls,col="blue",ylim=c(-0.075,0.075),outline = FALSE,boxwex=1.25,las=2,add = TRUE,cex.axis=0.5)
+title("Decorrelated Absorbance")
+legend("topright",legend=c("Cases", "Controls"),
+        fill=c("red", "blue"),
+       cex=0.6)
+
+
+
+
+
+effectSize <- (apply(cases,2,median)-apply(controls,2,median))/apply(reldecor[,str_detect(colnames(reldecor),"De_")],2,IQR)
+wavenumber=as.numeric(str_remove_all(names(effectSize),"De_V_"))
+
+aucvalue <- univarDe$orderframe$ROCAUC
+depcvalue <- univarDe$orderframe$WilcoxRes.p
+
+wavenumber=str_remove_all(rownames(univarDe$orderframe),"De_V_")
+wavenumber=str_remove_all(wavenumber,"Ba_V_")
+wavenumber=as.numeric(str_remove_all(wavenumber,"V_"))
+aucvalueDe <- aucvalue[order(wavenumber)]
+depcvalue <- depcvalue[order(wavenumber)]
+wavenumberDe <- wavenumber[order(wavenumber)]
+
+bpdiff <- plot(x=wavenumberDe,y=aucvalueDe,las=2,cex.axis=0.5,type="l",
+                                   xlim = c(1300,800),
+                                  ylab="ROCAUC",
+                   xlab=expression("Wavenumber (cm)"^"-1"))
+title("Difference in Decorrelated Absorbance")
+
+
+
+
+
+par(op)
+
+```
+
+### Comparing ROC AUC
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 5.0, fig.width= 7.0}
+par(cex=0.8)
+varlist <- colnames(SalivaThermal_d2)[!(colnames(SalivaThermal_d2) %in% "class")]
+varlist <- cbind(varlist,varlist)
+pthr <- 0.05/(ncol(SalivaThermal)-1)
+
+univarD2 <- uniRankVar(varlist,
+	           "class~1",
+	           "class",
+	           SalivaThermal_d2,
+	           categorizationType = "Raw",
+	           type = "LOGIT",
+	           rankingTest = "AUC",
+	            uniType = "Binary")
+
+aucvalue <- univarD2$orderframe$ROCAUC
+pwilvalue <- univarD2$orderframe$FRes.p
+
+wavenumber=as.numeric(str_remove_all(rownames(univarD2$orderframe),"DD_"))
+aucvalueDD <- aucvalue[order(wavenumber)]
+wavenumberDD <- wavenumber[order(wavenumber)]
+pwilvalue <- pwilvalue[order(wavenumber)]
+
+
+bpdiff <- plot(x=wavenumberRaw,y=aucvalueRaw,
+               las=2,
+               cex.axis=0.5,
+               type="l",
+               lwd=3,
+                xlim=c(1300,800),
+                ylim=c(0.45,0.86),
+               ylab="ROC AUC",
+               xlab=expression("Wavenumber (cm)"^"-1"))
+title("Feature Association with COVID-19")
+
+valroc <- pwilvalue < pthr
+points(wavenumberDD[valroc],aucvalueDD[valroc],col="blue",lwd=3)
+
+#bpdiff <- plot
+valroc <- depcvalue < pthr
+
+dc <- getDerivedCoefficients(deThermal)
+for (dename in names(dc))
+{
+  wave <- as.numeric(str_remove(dename,"De_V_"))
+  if (wave %in% wavenumberDe[valroc])
+  {
+    for (asfeat in names(dc[[dename]]))
+    {
+      points(x=as.numeric(str_remove_all(asfeat,"V_")),
+               y=univarDe$orderframe[dename,"ROCAUC"],col="pink",pch=10)
+    }
+  }
+}
+
+points(x=wavenumberDe[valroc],
+               y=aucvalueDe[valroc],col="red",pch=4,lwd=2)
+
+legend("bottomleft",legend=c("raw", "2nd Deriv","De: Parent","De: w>0"),
+       col=c("black", "blue","red","pink"), lty=c(1,0,0,0),lwd=c(3,3,2,1),pch=c(-1,1,4,10), cex=0.8)
+
+```
+
+```{r}
+
+bm <- BSWiMS.model(class~.,deThermal)
+bm$bagging$nnmodel$coefficients
+bm$bagging$bagged.model$coefficients
+
+p1 <- predict(bm,deThermal)
+deThermal2 <- deThermal
+p2 <- predict(bm$bagging$nnmodel,deThermal2)
+class(bm)
+class(bm$bagging$nnmodel)
+
+plot(p1,p2)
+bpraw <- predictionStats_binary(cbind(deThermal$class,p1),"BSWiMS RAW",cex=0.60)
+bpraw <- predictionStats_binary(cbind(deThermal$class,p2),"BSWiMS RAW",cex=0.60)
+
+
+```
+
+
+### Holdout Cross-Validation
+
+I'll explore BSWiMS modeling using the Holdout cross validation method of FRESA.CAD. The purpose of the cross-validation is to observe and estimate the performance gain of decorrelation.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+par(mfrow=c(1,2))
+
+## The Raw validation
+
+cvBSWiMSRaw <- randomCV(SalivaThermal_Avg,
+                "class",
+                fittingFunction= BSWiMS.model,
+                classSamplingType = "LOO",
+                trainFraction = trainFraction,
+                repetitions = 120,
+                pvalue=0.1,
+                loops=1,
+                elimination.bootstrap.steps=0,
+)
+bpraw <- predictionStats_binary(cvBSWiMSRaw$medianTest,"BSWiMS RAW",cex=0.60)
+#par(op)
+
+pander::pander(bpraw$CM.analysis$tab)
+pander::pander(bpraw$accc)
+pander::pander(bpraw$aucs)
+pander::pander(bpraw$berror)
+
+
+## The validation with Outcome-driven Decorrelation
+cvBSWiMSDeCor <- randomCV(SalivaThermal_Avg,
+                "class",
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=BSWiMS.model,
+                filtermethod=NULL,
+                DECOR = TRUE,
+                DECOR.control=list(Outcome="class",thr=0.90),
+                pvalue=0.1,
+                loops=1,
+                elimination.bootstrap.steps=0,
+)
+
+bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
+par(op)
+
+pander::pander(bpDecor$CM.analysis$tab)
+pander::pander(bpDecor$accc)
+pander::pander(bpDecor$aucs)
+pander::pander(bpDecor$berror)
+
+### Here we compute the probability that the outcome-driven decorrelation ROC is superior to the RAW ROC. 
+pander::pander(roc.test(bpDecor$ROC.analysis$roc.predictor,bpraw$ROC.analysis$roc.predictor,alternative = "greater"))
+
+### Testing improving accuracy
+testRaw <- (cvBSWiMSRaw$medianTest[,1]-cvBSWiMSRaw$medianTest[,2])<0.5
+testDecor <- (cvBSWiMSDeCor$medianTest[,1]-cvBSWiMSDeCor$medianTest[,2])<0.5
+pander::pander(mcnemar.test(testRaw,testDecor))
+
+
+```
+
+
+### Bagg Analysis
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+par(mfrow=c(1,2))
+
+
+cvBSWiMSD2 <- randomCV(SalivaThermal_d2,
+                "class",
+                fittingFunction= BSWiMS.model,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                loops=1,
+)
+bpD2 <- predictionStats_binary(cvBSWiMSD2$medianTest,"BSWiMS Second Derivative",cex=0.70)
+
+deThermalS <- FRESAScale(deThermal,method="OrderLogit")
+
+cvBSWiMSDe <- randomCV(deThermalS$scaledData,
+                "class",
+                fittingFunction= BSWiMS.model,
+                trainSampleSets= cvBSWiMSRaw$trainSamplesSets,
+                loops=1,
+)
+bpDe <- predictionStats_binary(cvBSWiMSDe$medianTest,"BSWiMS Decorrelated",cex=0.70)
+par(op)
+
+par(mfrow=c(1,2))
+fs <- cvBSWiMSD2$featureFrequency
+barplot(fs[order(-fs)],las=2,main="Selected Features: Second Derivative",cex.names = 0.5)
+
+fs <- cvBSWiMSDe$featureFrequency
+barplot(fs[order(-fs)],las=2,main="Selected Features: Decorrelation",cex.names = 0.5)
+
+
+par(op)
+par(mfrow=c(1,2))
+
+
+bagg <- baggedModel(cvBSWiMSDe$formula.list,
+                    data=deThermalS$scaledData,
+                    type="LOGIT");
+sm <- summary(bagg$bagged.model)
+pander::pander(sm$coefficients)
+pander::pander(bagg$Jaccard.SM)
+
+bpDecor <- predictionStats_binary(cbind(deThermal$class,predict(bagg$bagged.model,deThermalS$scaledData)),"BSWiMS Outcome-Driven GDSTM",cex=0.90)
+par(op)
+
+fs <- bagg$frequencyTable
+barplot(fs[order(-fs)],las=2,main="Selected Features",cex.names = 0.5)
+
+```
+
+## The Feature Associations
+
+I'll print the graph showing the association between features. Each feature cluster represents a logistic regression formula (formula cluster) discovered by the BSWiMS method. The figure will plot:
+
+-   Outcome-driven network
+
+
+The plots will show only formula networks with more than 50% of occurrence and 25% of feature to feature association.
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 5.0, fig.width= 7.0}
+
+par(op)
+#par(mfrow=c(1,1))
+### The raw model
+
+pander::pander(nrow(bagg$formulaNetwork))
+
+smDecor <- summary(bagg$bagged.model)
+
+cmax <- apply(bagg$formulaNetwork,2,max)
+cnames <- names(cmax[cmax>=0.35])
+cmax <- cmax[cmax>=0.35]
+adma <- bagg$formulaNetwork[cnames,cnames]
+
+rownames(adma) <- cnames
+colnames(adma) <- cnames
+names(cmax) <- cnames
+adma[adma<0.15] <- 0;
+gr <- graph_from_adjacency_matrix(adma,mode = "undirected",diag = FALSE,weighted=TRUE)
+gr$layout <- layout_with_fr
+
+fc <- cluster_optimal(gr)
+VertexSize <- 100*sqrt(abs(smDecor$coefficients$Delta.AUC))
+names(VertexSize) <- rownames(smDecor$coefficients)
+VertexSize <- VertexSize[cnames]
+
+plot(fc, gr,
+     vertex.size=0.5*VertexSize,
+      edge.width=10*E(gr)$weight,
+     vertex.label.cex=0.70,
+     vertex.label.dist=0,
+     main="Feature Association")
+
+
+
+```
+
+### Feature Analysis of Models
+
+The analysis of the features required to predict the outcome will use the following:
+
+
+2.  Analysis of the sparse GDSMT
+
+3.  Analysis of the univariate association of the model features of both models
+
+4.  Report the new features not found by the Original data analysis
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+par(mfrow=c(1,1))
+
+### From Drived Decorrelation
+
+decornames <- rownames(smDecor$coefficients)
+
+decornames <- decornames[smDecor$coefficients$Frequency > 0.25]
+
+## 2 Get the decorrelation matrix formulas
+dc <- getDerivedCoefficients(deThermal)
+### 2a Get only the ones that were decorrelated by the decorrelation-based model
+deNames_in_dc <- decornames[decornames %in% names(dc)]
+selectedlist <- dc[deNames_in_dc]
+theDeFormulas <- selectedlist
+pander::pander(selectedlist)
+names(selectedlist) <- NULL
+### 2b Get the the names of the original features
+
+allDevar <- unique(c(names(unlist(selectedlist)),decornames))
+allDevar <- allDevar[!str_detect(allDevar,"De_")]
+allDevar <- str_remove(allDevar,"Ba_")
+allDevar <- unique(allDevar)
+
+
+
+```
+
+### The Final Table
+
+I'll create a table subset of the logistic model from the Outcome-Driven decorrelated data.
+
+The table will have:
+
+1.  The top associated features described by the feature network, as well as, and the new features.
+
+    1.  For Decorrelated features it will provide the decorrelation formula
+
+2.  cluster labels
+
+    1.  The label of cluster as found by the clustering procedure
+
+3.  The feature coefficient
+
+4.  The feature Odd ratios and their corresponding 95%CI
+
+```{r}
+
+## The features in top cluster
+clusterFeatures <- fc$names
+## The new features 
+
+tablefinal <- smDecor$coefficients[clusterFeatures,
+                                    c("Estimate",
+                                     "lower",
+                                     "OR",
+                                     "upper",
+                                     "full.AUC",
+                                     "Delta.AUC",
+                                     "z.IDI",
+                                     "Frequency")]
+
+cluster <- fc$membership
+names(cluster) <- fc$names
+tablefinal$cluster <- cluster[rownames(tablefinal)]
+tablefinal$cluster[is.na(tablefinal$cluster)] <- "D"
+deFromula <- character(length(theDeFormulas))
+names(deFromula) <- names(theDeFormulas)
+for (dx in names(deFromula))
+{
+  coef <- theDeFormulas[[dx]]
+  cname <- names(theDeFormulas[[dx]])
+  names(cname) <- cname
+  for (cf in names(coef))
+  {
+    if (cf != dx)
+    {
+      if (coef[cf]>0)
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("+ %5.3f*%s",coef[cf],cname[cf]))
+      }
+      else
+      {
+        deFromula[dx] <- paste(deFromula[dx],
+                               sprintf("%5.3f*%s",coef[cf],cname[cf]))
+      }
+    }
+  }
+}
+tablefinal$DecorFormula <- deFromula[rownames(tablefinal)]
+tablefinal <- tablefinal[order(-tablefinal$z.IDI),]
+tablefinal <- tablefinal[order(as.numeric(tablefinal$cluster)),]
+pander::pander(tablefinal)
+
+```
+
+#### Saving all the generated data
+
+```{r}
+save.image("~/GitHub/FCA/TERMALCOVID_19Demo.RData")
+
+```
