@@ -33,7 +33,7 @@ This demo will use:
 
 -   *FRESA.CAD::GDSTMDecorrelation()*. For Decorrelation of Multidimensional data sets
 
-    -   *FRESA.CAD::getDerivedCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
+    -   *FRESA.CAD::getLatentCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
 
 -   *FRESA.CAD::randomCV()* For the cross-validation of the Machine Learning models
 
@@ -197,8 +197,8 @@ deTestU <- predictDecorrelate(deTrainU,testSet)
 ### Distance map
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-tranformed2 <- colnames(deTrain)[str_detect(colnames(deTrain),"De_")]
-tranformed <- str_remove_all(tranformed2,"De_")
+tranformed2 <- colnames(deTrain)[str_detect(colnames(deTrain),"La_")]
+tranformed <- str_remove_all(tranformed2,"La_")
 
 dsubs <- as.matrix(dist(as.matrix(trainSet[,tranformed]),"euclidean"))
 
@@ -533,7 +533,7 @@ decornamesU <- rownames(smDecorU$coefficients)
 
 
 ## 2 Get the decorrelation matrix formulas
-dc <- getDerivedCoefficients(deTrain)
+dc <- getLatentCoefficients(deTrain)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dc <- decornames[decornames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
@@ -543,14 +543,14 @@ names(selectedlist) <- NULL
 ### 2b Get the the names of the original features
 
 allDevar <- unique(c(names(unlist(selectedlist)),decornames))
-allDevar <- allDevar[!str_detect(allDevar,"De_")]
+allDevar <- allDevar[!str_detect(allDevar,"La_")]
 allDevar <- str_remove(allDevar,"Ba_")
 allDevar <- unique(allDevar)
 
 
 # The analysis of the blind decorrelation
 
-dcU <- getDerivedCoefficients(deTrainU)
+dcU <- getLatentCoefficients(deTrainU)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dcU <- decornamesU[decornamesU %in% names(dcU)]
 selectedlistU <- dcU[deNames_in_dcU]
@@ -559,7 +559,7 @@ names(selectedlistU) <- NULL
 ### 2b Get the the names of the original features
 
 allDevarU <- unique(c(names(unlist(selectedlistU)),decornamesU))
-allDevarU <- allDevarU[!str_detect(allDevarU,"De_")]
+allDevarU <- allDevarU[!str_detect(allDevarU,"La_")]
 allDevarU <- str_remove(allDevarU,"Ba_")
 allDevarU <- unique(allDevarU)
 
@@ -591,7 +591,7 @@ for (cvar in deNames_in_dc)
 ## 4a The scater plot of the decorrelated vs original Univariate values
 
 zvalueNew <- bmd$univariate[newvars,]
-rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"De_")
+rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"La_")
 rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"Ba_")
 
 zvaluePrePost <- bm$univariate[rownames(zvalueNew),c(1,3)]
@@ -647,24 +647,24 @@ par(mfrow=c(1,1))
 smDecorU <- summary(bmdU)
 decornamesU <- rownames(smDecorU$coefficients)
 
-get_De_names <- decornames[!str_detect(decornames,"De_")]
-get_De_namesU <- decornamesU[!str_detect(decornamesU,"De_")]
+get_La_names <- decornames[!str_detect(decornames,"La_")]
+get_La_namesU <- decornamesU[!str_detect(decornamesU,"La_")]
 
 unn <- bmd$univariate[,3]
 names(unn) <- rownames(bmd$univariate)
-pander::pander(as.matrix(unn[get_De_names]))
-pander::pander(summary(unn[get_De_names]))
+pander::pander(as.matrix(unn[get_La_names]))
+pander::pander(summary(unn[get_La_names]))
 
 unnU <- bmdU$univariate[,3]
 names(unnU) <- rownames(bmdU$univariate)
-pander::pander(as.matrix(unnU[get_De_namesU]))
-pander::pander(summary(unnU[get_De_namesU]))
-#boxplot(unn[get_De_names],unnU[get_De_namesU],xlab=c("Method"),ylab="Z",main="Z Values of Basis Features")
+pander::pander(as.matrix(unnU[get_La_namesU]))
+pander::pander(summary(unnU[get_La_namesU]))
+#boxplot(unn[get_La_names],unnU[get_La_namesU],xlab=c("Method"),ylab="Z",main="Z Values of Basis Features")
 
-x1 <- unn[get_De_names]
-x2 <- unnU[get_De_namesU]
-X3 <- x1[!(get_De_names %in% get_De_namesU)]
-X4 <- x2[!(get_De_namesU %in% get_De_names)]
+x1 <- unn[get_La_names]
+x2 <- unnU[get_La_namesU]
+X3 <- x1[!(get_La_names %in% get_La_namesU)]
+X4 <- x2[!(get_La_namesU %in% get_La_names)]
 vioplot(x1, x2, X3,X4, 
         names = c("Outcome-Driven", 
                   "Blind",
@@ -674,13 +674,13 @@ vioplot(x1, x2, X3,X4,
    col="gold")
 title("Violin Plots of Unaltered-Basis")
 
-sameFeatures <- get_De_names[get_De_names %in% get_De_namesU]
+sameFeatures <- get_La_names[get_La_names %in% get_La_namesU]
 pander::pander(as.matrix(unn[sameFeatures]))
 ## The features by Outcome Drive not in Blind
-pander::pander(as.matrix(x1[!(get_De_names %in% get_De_namesU)]))
+pander::pander(as.matrix(x1[!(get_La_names %in% get_La_namesU)]))
 
 ## The features not in outcome driven
-pander::pander(as.matrix(x2[!(get_De_namesU %in% get_De_names)]))
+pander::pander(as.matrix(x2[!(get_La_namesU %in% get_La_names)]))
 ```
 
 ### The Final Table

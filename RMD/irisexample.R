@@ -9,26 +9,15 @@ colors <- c("red","green","blue")
 names(colors) <- names(table(iris$Species))
 classcolor <- colors[iris$Species]
 
-## Unsupervised FCA Decorrelation at 0.25 threshold, pearson and fast estimation 
-system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25,verbose = TRUE))
+##FCA Decorrelation at 0.25 threshold, pearson and fast estimation 
+system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25))
+
+### Print the latent variables
+print(getLatentCoefficients(irisDecor));
+
 GDSTM <- attr(irisDecor,"GDSTM")
 
-apply(GDSTM!=0,2,sum)
-
 print(GDSTM)
-write.csv(GDSTM,"unGDSTM.csv")
-
-namecol <- colnames(GDSTM);
-
-for (i in 1:ncol(GDSTM))
-{
-  associ <- abs(GDSTM[,i])>0;
-  if (sum(associ) > 1)
-  {
-    print(namecol[i])
-    print(GDSTM[associ,i])
-  }
-}
 
 ## The heat map of the generated decorrelation matrix
 gplots::heatmap.2(GDSTM,
@@ -37,7 +26,7 @@ gplots::heatmap.2(GDSTM,
                   dendrogram = "none",
                   mar = c(7,7),
                   col=rev(heat.colors(21)),
-                  main = paste("Unsupervised GDSTM"),
+                  main = paste("GDSTM Matrix"),
                   cexRow = 0.75,
                   cexCol = 0.75,
                   key.title=NA,
@@ -49,21 +38,12 @@ gplots::heatmap.2(GDSTM,
 ## Estimating a new decorrelation matrix using supervised basis. ie. Keep unaltered features associated with outcome
 
 system.time(irisDecorOutcome <- GDSTMDecorrelation(iris,Outcome="Species",thr=0.25))
+
+### Print the latent variables
+print(getLatentCoefficients(irisDecorOutcome));
+
 GDSTM <- attr(irisDecorOutcome,"GDSTM")
 print(GDSTM)
-write.csv(GDSTM,"SupGDSTM.csv")
-
-namecol <- colnames(GDSTM);
-
-for (i in 1:ncol(GDSTM))
-{
-  associ <- abs(GDSTM[,i])>0;
-  if (sum(associ) > 1)
-  {
-    print(namecol[i])
-    print(GDSTM[associ,i])
-  }
-}
 
 
 ## Heat map of The Decorrelation matrix
@@ -73,7 +53,7 @@ gplots::heatmap.2(GDSTM,
                   dendrogram = "none",
                   mar = c(7,7),
                   col=rev(heat.colors(21)),
-                  main = paste("Supervised GDSTM"),
+                  main = paste("Outcome-Driven GDSTM"),
                   cexRow = 0.75,
                   cexCol = 0.75,
                   key.title=NA,
@@ -87,7 +67,6 @@ gplots::heatmap.2(GDSTM,
 features <- colnames(iris[,sapply(iris,is,"numeric")])
 irisPCA <- prcomp(iris[,features]);
 print(irisPCA$rotation)
-write.csv(irisPCA$rotation,"irisPCARotation.csv")
 
 
 ## Heatmap of The PCA Transformation matrix
@@ -114,11 +93,11 @@ plot(iris[,features],col=classcolor,main="Raw IRIS")
 plot(as.data.frame(irisPCA$x),col=classcolor,main="PCA IRIS")
 
 featuresDecor <- colnames(irisDecor[,sapply(irisDecor,is,"numeric")])
-plot(irisDecor[,featuresDecor],col=classcolor,main="Unsupervised FCA IRIS")
+plot(irisDecor[,featuresDecor],col=classcolor,main="GDSTM IRIS")
 
 
 featuresDecor <- colnames(irisDecorOutcome[,sapply(irisDecorOutcome,is,"numeric")])
-plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Supervised FCA IRIS")
+plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Outcome-Driven GDSTM IRIS")
 
 ## Plotting the histograms of the features
 par(mfrow=c(2,3))
@@ -188,12 +167,12 @@ boxplot(iris$Petal.Length~iris$Species,
 boxplot(irisDecor$Ba_Petal.Length~iris$Species,
         notch=TRUE,
         ylab="Petal Length",
-        main="Un_Decor: Petal Length")
+        main="GDSTM: Petal Length")
 
 boxplot(irisDecorOutcome$La_Petal.Length~iris$Species,
         notch=TRUE,
         ylab="De Petal Length",
-        main="Sup_Decor: Petal Length")
+        main="Outcome-Decor: Petal Length")
 
 boxplot(iris$Sepal.Width~iris$Species,
         notch=TRUE,
@@ -203,12 +182,12 @@ boxplot(iris$Sepal.Width~iris$Species,
 boxplot(irisDecor$La_Sepal.Width~iris$Species,
         notch=TRUE,
         ylab="De Sepal Width",
-        main="Un_Decor: Sepal Width")
+        main="GDSTM: Sepal Width")
 
 boxplot(irisDecorOutcome$La_Sepal.Width~iris$Species,
         notch=TRUE,
         ylab="De Sepal Width",
-        main="Sup_Decor: Sepal Width")
+        main="Outcme-Driven: Sepal Width")
 
 boxplot(iris$Petal.Width~iris$Species,
         notch=TRUE,
@@ -218,12 +197,12 @@ boxplot(iris$Petal.Width~iris$Species,
 boxplot(irisDecor$La_Petal.Width~iris$Species,
         notch=TRUE,
         ylab="De Petal Width",
-        main="Un_Decor: Petal Width")
+        main="GDSTM: Petal Width")
 
 boxplot(irisDecorOutcome$Ba_Petal.Width~iris$Species,
         notch=TRUE,
         ylab="Petal Width",
-        main="Sup_Decor: Petal Width")
+        main="Outcome-Driven: Petal Width")
 
 dev.off()
 

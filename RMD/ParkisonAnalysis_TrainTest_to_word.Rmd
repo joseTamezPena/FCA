@@ -37,7 +37,7 @@ This demo will use:
 
 -   FRESA.CAD::GDSTMDecorrelation(). For Decorrelation of Multidimensional data sets
 
-    -   FRESA.CAD::getDerivedCoefficients(). For the extraction of the decorrelated features.
+    -   FRESA.CAD::getLatentCoefficients(). For the extraction of the decorrelated features.
 
 -   FRESA.CAD::randomCV() For the cross-validation of the Machine Learning models
 
@@ -440,7 +440,7 @@ decornamesU <- rownames(smDecorU$coefficients)
 
 
 ## 2 Get the decorrelation matrix formulas
-dc <- getDerivedCoefficients(deTrain)
+dc <- getLatentCoefficients(deTrain)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dc <- decornames[decornames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
@@ -458,7 +458,7 @@ allDevar <- unique(allDevar)
 
 # The analysis of the blind decorrelation
 
-dcU <- getDerivedCoefficients(deTrainU)
+dcU <- getLatentCoefficients(deTrainU)
 ### 2a Get only the ones that were decorrelated by the decorrelation-based model
 deNames_in_dcU <- decornamesU[decornamesU %in% names(dcU)]
 selectedlistU <- dcU[deNames_in_dcU]

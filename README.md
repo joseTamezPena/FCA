@@ -28,4 +28,6 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
     -   Here an example of the output
 
-<img src="RMD/IRIS_outputs.png" alt="Outputs of the IRIS example" width="1000"/>
+![](images/paste-FEDD09C1.png)
+
+![](images/paste-3DFE01AF.png)
