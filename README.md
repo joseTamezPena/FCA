@@ -2,7 +2,7 @@
 
 Feature Decorrelation Analysis (FDeA) and the Goal Driven Spatial Transformation Matrices (GDSTM)
 
-This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and **filteredFit()** functions to run feature decorrelation analysis (**FDeA**) algorithm for ML purposes.
+This document describes the use of the **FRESA.CAD::GDSTMDecorrelation(), FRESA.CAD::getLatentCoefficients(decorrelatedobject)** and**FRESA.CAD::** **filteredFit()** functions to run feature decorrelation analysis (**FDeA**) algorithm.
 
 -   **FDeA_Options_testing.Rmd** runs a script of the Vehicle data set showcasing the use *GDSTMDecorrelation()* for decorrelation, feature analysis and ML (**NB**).
 
@@ -24,10 +24,10 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
     -   output at: <https://rpubs.com/J_Tamez/GDSTMFeatureDiscovery>
 
--   **irisexample.R** showcase the effect of the FCA algorithm on the iris data set.
+-   **irisexample.R** showcase the effect of the FDeA algorithm on the iris data set.
 
     -   Here an example of the output
 
 ![](images/paste-526C71D2.png)
 
-![![](images/paste-BAB6B641.png){width="450"}](images/paste-E26FFFC0.png){width="448"}
+![](images/paste-DF3940FF.png)
