@@ -28,6 +28,6 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** and *
 
     -   Here an example of the output
 
-![](images/paste-FEDD09C1.png)
+![](images/paste-526C71D2.png)
 
-![](images/paste-3DFE01AF.png)
+![![](images/paste-BAB6B641.png){width="450"}](images/paste-E26FFFC0.png){width="448"}
