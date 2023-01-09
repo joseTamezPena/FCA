@@ -7,7 +7,7 @@ output:
 
 ## FDeA-Based Decorrelation on Vehicle
 
-This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature correlation analysis (**FDeA**) algorithm.
+This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature Decorrelation analysis (**FDeA**) algorithm.
 
 This demo uses FRESA.CAD and mlbench R packages:
 
@@ -75,7 +75,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ```
 
-## FCA with Default Parameters
+## FDeA with Default Parameters
 
 The default parameters will compute the transformation matrix with a maximum correlation goal of 0.8 using fast matrix multiplication with Pearson correlation and linear models estimation.
 
@@ -84,20 +84,127 @@ Default Parameters: thr=0.80,method="fast",type="LM"
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-datasetframeDecor<-list();
-decortype <- list();
-system.time(datasetframeDecor[[1]] <- GDSTMDecorrelation(datasetframe_train))
-decortype[[1]] <- "Default"
+system.time(decorrelatedDF <- GDSTMDecorrelation(datasetframe_train))
+
+
+
+```
+### Returned Data Frame Specifications
+
+The **GDSTMDecorrelation** function returns a data frame with the following specifications for the column names:
+
+The output basis after transformation will be named after the original names:
+
+-   The feature name will be unaltered, if their maximum correlation to other features was lower than the required threshold.
+
+-   The feature name will have the "Ba\_" prefix, if the feature was correlated but used as unaltered basis
+
+-   The feature name will have the "La\_" prefix, if the feature was decorrelated by the algorithm. These features are discovered latent variables
+
+
+#### The Unlatered Features
+```{r results = "asis"}
+## The unaltered features set 1: 
+## 1) Uncorrelated to any other feature or
+## 2) Factors or
+## 3) features with not enough unique values.
+pander::pander(colnames(decorrelatedDF)[colnames(decorrelatedDF) %in% colnames(datasetframe_train)])
+
+```
+
+#### The Unaltered Basis
+```{r results = "asis"}
+## The unaltered features set 2. 
+## Continuous features that are correlated but left unaltered by the FDeA
+pander::pander(colnames(decorrelatedDF)[str_detect(colnames(decorrelatedDF),"Ba_")])
+```
+
+#### The Latent Basis
+```{r results = "asis"}
+## The discovered latent features. i.e. Decorrelated by the FDeA
+pander::pander(colnames(decorrelatedDF)[str_detect(colnames(decorrelatedDF),"La_")])
+                                        
+                                        
+```
+
+
+### The Discovered Latent Variables
+
+The returned decorrelated object can be analyzed by the **getLatentCoefficients()** function to return the set of discovered latent variables with their corresponding formula.
+
+```{r results = "asis"}
+latentlist <- getLatentCoefficients(decorrelatedDF)
+pander::pander(latentlist)
+```
+
+### Attributes of the Returned Dataframe.
+
+Furthermore, the returned data frame will have the following main attributes:
+
+1)  Transformation matrix: "*GDSTM*"
+
+2)  Feature Analysis:
+
+    1.  "*TotalAdjustments*"
+
+    2.  "*fsocre*"
+
+#### GDSTM
+
+The "*GDSTM***"** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the user specified threshold
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+
+## The Spatial Transformation Matrix:
+GDSTM <- attr(decorrelatedDF,"GDSTM")
+
+## The heatmap of the matrix
+gplots::heatmap.2(1*(abs(GDSTM) > 0),
+                  trace = "none",
+                  mar = c(10,10),
+                  col=rev(heat.colors(2)),
+                  main = paste("GDSTM Matrix:",studyName),
+                  cexRow = 0.7,
+                  cexCol = 0.7,
+                  breaks = c(0,0.5,1),
+                  key.title=NA,
+                  key.xlab="|beta| > 0",
+                  xlab="GDSTM Feature", ylab="Input Feature")
+
+pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
 
 
 ```
 
-### Testing Set Decorrelation
+#### The Feature Index Score
 
-To decorrelate the testing set use the **predictDecorrelate()** function
+The **FDeA** analysis of the data features are stored in three attributes: "*TotalAdjustments*", and "*fscore*".
+
+-   "*TotalAdjustments*" returns named vector of with the number of times a variable was decorrelated by the FDeA.
+
+-   "*fscore*" : returns a named vector with the total feature score, $F_j$, of the analyzed features. The score is equal to number of times the features was uses as independent feature minus the "*TotalAdjustments*".
+
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
+
+pander::pander(t(attr(decorrelatedDF,"TotalAdjustments")),caption="Total Adjustments")
+
+pander::pander(t(attr(decorrelatedDF,"fscore")),caption="The Score")
+
+fscore <- attr(decorrelatedDF,"fscore") 
+fscore <- fscore[order(-fscore)];
+barplot(fscore,las=2,cex.names = 0.6)
+
+```
+
+
+### Testing Set Decorrelation
+
+To decorrelate any new data set use the **predictDecorrelate()** function
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+decor_test <- predictDecorrelate(decorrelatedDF,datasetframe_test)
 
 ```
 
@@ -108,7 +215,7 @@ Here are the heat maps of the correlation matrices before and after decorrelatio
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-featnames <- attr(datasetframeDecor[[1]],"varincluded")
+featnames <- attr(decorrelatedDF,"varincluded")
 cormat <- cor(datasetframe_test[,featnames],method="pearson")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -123,7 +230,7 @@ gplots::heatmap.2(abs(cormat),
                   xlab="Feature", ylab="Feature")
 
 
-featnames <- colnames(attr(datasetframeDecor[[1]],"GDSTM"))
+featnames <- colnames(attr(decorrelatedDF,"GDSTM"))
 cormat <- cor(decor_test[,featnames],method="pearson")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -140,11 +247,18 @@ gplots::heatmap.2(abs(cormat),
 
 ```
 
-## FCA with Options
+## FDeA with Options
 
 The following code are examples of running **GDSTMDecorrelation()** function with options:
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+datasetframeDecor<-list();
+
+# With default parameters
+datasetframeDecor[[1]] <- decorrelatedDF
+decortype <- list();
+decortype[[1]] <- "Default"
 
 
 # Change the maximum correlation goal
@@ -178,24 +292,24 @@ system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
   method="spearman"))
 
 
-# The following are for supervised basis learning
+# The following are for outcome driven learning
 
 # Set the target class for association learning
-decortype[[6]] <- "Sup_Default"
+decortype[[6]] <- "Driven_Default"
 system.time(datasetframeDecor[[6]] <- GDSTMDecorrelation(
   datasetframe_train,
   Outcome=Outcome))
 
 
 # Change the maximum correlation goal
-decortype[[7]] <- "Sup_AtThr"
+decortype[[7]] <- "Driven_AtThr"
 system.time(datasetframeDecor[[7]] <- GDSTMDecorrelation(
   datasetframe_train,
   thr = correlationThreshold,
   Outcome=Outcome))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
-decortype[[8]] <- "Sup_RLM_Pearson"
+decortype[[8]] <- "Driven_RLM_Pearson"
 system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
   datasetframe_train,
   Outcome=Outcome,
@@ -203,7 +317,7 @@ system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
   method="pearson"))
 
 # Change the maximum correlation goal, and change to Spearman correlation
-decortype[[9]] <- "Sup_LM_Spearman"
+decortype[[9]] <- "Driven_LM_Spearman"
 system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
   datasetframe_train,
   Outcome=Outcome,
@@ -211,7 +325,7 @@ system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
   method="spearman"))
 
 # Change the maximum correlation goal, and set to Spearman correlation with robust liner model
-decortype[[10]] <- "Sup_RLM_Spearman"
+decortype[[10]] <- "Driven_RLM_Spearman"
 system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
   datasetframe_train,
   Outcome=Outcome,
@@ -219,8 +333,8 @@ system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
   method="spearman"))
 
 
-# With user defined supervised basis 
-decortype[[11]] <- "Sup_KS_RLM_Spearman"
+# With user defined basis 
+decortype[[11]] <- "Driven_KS_RLM_Spearman"
 baseKS <- names(univariate_KS(datasetframe_train,
                         Outcome=Outcome,
                         pvalue=0.20,
@@ -234,169 +348,6 @@ system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
   type="RLM",
   method="spearman"))
 
-
-```
-
-The **GDSTMDecorrelation** function returns a data frame with the following column names:
-
-The output features after transformation will be named after the original names and:
-
--   The name will be unaltered if their maximum correlation to other features was lower than the threshold.
-
--   The name will have the "Ba\_" prefix is the feature was correlated but used as unaltered basis
-
--   The name will have the "De\_" prefix is the feature was original correlated and its correlation to "Ba\_" features has been removed.
-
-Furthermore, the returned data frame will have the following attributes:
-
-1)  Transformation matrix: "*GDSTM*"
-
-2)  Features:
-
-    1.  "*fsocre*"
-
-    2.  "*varincluded*"
-
-    3.  "*topFeatures*"
-
-3)  Unaltered Basis:
-
-    1.  "*baseFeatures*"
-
-        1.  "*correlatedToBase*"
-
-    2.  "*AbaseFeatures*"
-
-### GDSTM
-
-The "*GDSTM***"** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the threshold
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-
-## The Spatial Transformation Matrix:
-GDSTM <- attr(datasetframeDecor[[1]],"GDSTM")
-
-## The heatmap of the matrix
-gplots::heatmap.2(1*(abs(GDSTM) > 0),
-                  trace = "none",
-                  mar = c(10,10),
-                  col=rev(heat.colors(2)),
-                  main = paste("GDSTM Matrix:",studyName),
-                  cexRow = 0.7,
-                  cexCol = 0.7,
-                  breaks = c(0,0.5,1),
-                  key.title=NA,
-                  key.xlab="|beta| > 0",
-                  xlab="GDSTM Feature", ylab="Input Feature")
-
-pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
-
-
-```
-
-### The Coefficients per each Decorrelated Feature
-
-The following code extracts the dependence formula coefficients of each new feature to the original features.
-
-```{r}
-
-namecol <- colnames(GDSTM);
-
-for (i in 1:ncol(GDSTM))
-{
-  associ <- abs(GDSTM[,i])>0;
-  if (sum(associ) > 1)
-  {
-    pander::pander(t(GDSTM[associ,i]),caption=namecol[i])
-  }
-}
-
-
-```
-
-### The Feature Index Score
-
-The **FCA** analysis of the data features are stored in three attributes: "*varincluded*", "*topFeatures*", and "*fscore*".
-
--   "varincluded" returns the list of continuous features that were decorrelated
-
--   "topFeatures" returns the features that at some point were used as independent variables inside the linear models.
-
--   "fscore" : returns a named vector with the total feature score, $F_j$, of the analyzed features.
-
-$$
-F_j=∑_{n}∑_{i∈B^{n}_{j}}(|ρ_{i,j}|>ρ_{th}),~ \forall j \in Ind
-$$
-
-$$
-F_j=F_j-∑_{n}|ρ_{B^n_j,j}|>ρ_{th},~ \forall j \in Dep
-$$
-
-where $B^n_j$ is the set of features statistically associated with feature *j* at iteration *n,* $ρ_{i,j}$ is the correlation between features *i,j*, and $ρ_{th}$ is the correlation goal, ${Ind, Dep}$ are the set of independent and dependent features respectively. In other words, the "*fscore"* indicates the degree of total association of"independent" features to dependent features.
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-pander::pander(t(attr(datasetframeDecor[[1]],"varincluded")),caption="Correlated Features")
-
-pander::pander(t(attr(datasetframeDecor[[1]],"topFeatures")),caption="Independent Features")
-
-fscore <- attr(datasetframeDecor[[1]],"fscore") 
-fscore <- fscore[order(-fscore)];
-barplot(fscore,las=2,cex.names = 0.6)
-
-```
-
-The FCA algorithm will return for unsupervised basis learning the following attribute: "*AbaseFeatures*"
-
-```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-pander::pander(t(attr(datasetframeDecor[[1]],"AbaseFeatures")),caption="Set of unaltered features")
-
-
-```
-
-The total set of unaltered features is:
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-
-atbase <- attr(datasetframeDecor[[1]],"AbaseFeatures")
-featnames <- colnames(datasetframe_train)
-included <- attr(datasetframeDecor[[1]],"varincluded")
-
-notinvarincluded <-  featnames[!(featnames %in% included)]
-pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features")
-
-```
-
-For supervised basis learning the FCA algorithm will return the following attributes:
-
--   "*baseFeatures*" and "*correlatedToBase*"
-
-The "*baseFeatures*" is the set of features that the **FRESA.CAD::univariate_correlation()** univariate filter function used to get the features associated with the outcome.
-
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-# With Supervised Basis
-
-pander::pander(t(attr(datasetframeDecor[[6]],"baseFeatures")),caption="Set of unaltered features")
-
-if (length(attr(datasetframeDecor[[6]],"correlatedToBase"))>0)
-{
-pander::pander(t(attr(datasetframeDecor[[6]],"correlatedToBase")),caption="Set of features associated with base")
-}
-
-atbaseSup <- attr(datasetframeDecor[[6]],"baseFeatures")
-included <- attr(datasetframeDecor[[6]],"varincluded")
-
-notinvarincludedSup <-  featnames[!(featnames %in% included)]
-pander::pander(t(c(atbaseSup,notinvarincludedSup)),caption="Set of unaltered features: Supervised")
-
-pander::pander(t(c(atbase,notinvarincluded)),caption="Set of unaltered features: Unsupervised")
-
-
-fscore <- attr(datasetframeDecor[[6]],"fscore") 
-fscore <- fscore[order(-fscore)];
-barplot(fscore,las=2,cex.names = 0.6,main="Feature Score: Supervised")
 
 ```
 
@@ -431,7 +382,7 @@ Training using the decorrelated data
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 mNBDecor <- filteredFit(paste(Outcome,"~."),
-                   datasetframeDecor[[1]],
+                   decorrelatedDF,
                     fitmethod=NAIVE_BAYES,
                      filtermethod=univariate_KS,
                      filtermethod.control=list(pvalue=0.05),
@@ -468,7 +419,7 @@ Selected decorrelated Features
 ```{r results = "asis", dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 vnames <- as.data.frame(cbind(mNBDecor$selectedfeatures,mNBDecor$selectedfeatures))
-dta <- datasetframeDecor[[1]];
+dta <- decorrelatedDF;
 dta <- FRESAScale(dta,method="OrderLogit")$scaledData
 dta$Class <- as.numeric(dta$Class)
 hm <- heatMaps(variableList=vnames,
@@ -487,7 +438,7 @@ To make predictions we need to transform the testing set. This is done using the
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 # Transform the testing set
-decor_test <- predictDecorrelate(datasetframeDecor[[1]],datasetframe_test)
+decor_test <- predictDecorrelate(decorrelatedDF,datasetframe_test)
 
 ```
 
@@ -533,7 +484,7 @@ AllRocAUC <- rbind(AllRocAUC,meanPCAROCAUC);
 ## Training and Prediction on all Decorrelations Sets
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-par(mfrow=c(2,2))
+par(mfrow=c(4,4))
 
 for (i in c(1:length(datasetframeDecor)))
 {
@@ -553,7 +504,7 @@ for (i in c(1:length(datasetframeDecor)))
   {
     classoutcomes <- 1*(datasetframe_test[,Outcome] == theClass)
     psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
-                                  paste(decortype[[i]],theClass,sep=":"),cex=0.75)
+                                  paste(decortype[[i]],theClass,sep=":"),cex=0.5)
     meanROCAUC <- meanROCAUC + psDecor$aucs;
   }
   meanROCAUC <- meanROCAUC/length(classNames)

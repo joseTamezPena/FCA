@@ -400,7 +400,7 @@ datasetframe_test <- datasetframe[testSamples,]
 
 ```
 
-### FI: Machine Learning with the filteredFit() function
+### Machine Learning with the filteredFit() function
 
 Train a simple NB and LASSO model on the datasets
 
@@ -593,4 +593,3 @@ bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
 
 ```
 
-## 
