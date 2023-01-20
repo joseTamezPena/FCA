@@ -127,11 +127,11 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,maxLoops=200,skipRelaxed=FALSE)
-DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,maxLoops=200,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,maxLoops=200,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,maxLoops=200,skipRelaxed=FALSE)
 
-pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"De_"))/(ncol(DEdataframe)-1)))
-pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
+pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"La_"))/(ncol(DEdataframe)-1)))
+#pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
 demat <- attr(DEdataframe,"GDSTM")
 pander::pander(c(sparse_Fraction=1.0-sum(demat==0)/ncol(demat)/nrow(demat)))
 varlistDe <-  colnames(DEdataframe)[colnames(DEdataframe) != "class"];
@@ -200,7 +200,7 @@ pander::pander(univarDe$orderframe[1:20,univariate_columns])
 
 ```{r results = "asis"}
 topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-5,])
-dc <- getDerivedCoefficients(DEdataframe)
+dc <- getLatentCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
@@ -246,7 +246,7 @@ for (dx in names(deFromula))
   }
 }
 orgnamez <- rownames(finalTable)
-orgnamez <- str_remove_all(orgnamez,"Ba_")
+#orgnamez <- str_remove_all(orgnamez,"Ba_")
 orgnamez <- str_remove_all(orgnamez,"De_")
 finalTable$uAUC <- univar$orderframe[orgnamez,"ROCAUC"]
 finalTable$DecorFormula <- deFromula[rownames(finalTable)]

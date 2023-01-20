@@ -544,7 +544,7 @@ names(selectedlist) <- NULL
 
 allDevar <- unique(c(names(unlist(selectedlist)),decornames))
 allDevar <- allDevar[!str_detect(allDevar,"La_")]
-allDevar <- str_remove(allDevar,"Ba_")
+#allDevar <- str_remove(allDevar,"Ba_")
 allDevar <- unique(allDevar)
 
 
@@ -560,7 +560,7 @@ names(selectedlistU) <- NULL
 
 allDevarU <- unique(c(names(unlist(selectedlistU)),decornamesU))
 allDevarU <- allDevarU[!str_detect(allDevarU,"La_")]
-allDevarU <- str_remove(allDevarU,"Ba_")
+#allDevarU <- str_remove(allDevarU,"Ba_")
 allDevarU <- unique(allDevarU)
 
 pander::pander(c(length(rawnames),length(decornames),length(decornamesU)))
@@ -592,7 +592,7 @@ for (cvar in deNames_in_dc)
 
 zvalueNew <- bmd$univariate[newvars,]
 rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"La_")
-rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"Ba_")
+#rownames(zvalueNew) <- str_remove(rownames(zvalueNew),"Ba_")
 
 zvaluePrePost <- bm$univariate[rownames(zvalueNew),c(1,3)]
 zvaluePrePost$Name <- NULL

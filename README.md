@@ -27,7 +27,6 @@ This document describes the use of the **FRESA.CAD::GDSTMDecorrelation(), FRESA.
 -   **irisexample.R** showcase the effect of the FDeA algorithm on the iris data set.
 
     -   Here an example of the output
+    -   ![](images/paste-8B4C5746.png)
 
-![](images/paste-526C71D2.png)
-
-![](images/paste-DF3940FF.png)
+![](images/paste-F24C6E81.png)

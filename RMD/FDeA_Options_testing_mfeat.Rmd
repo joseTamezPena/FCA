@@ -3,6 +3,8 @@ title: "FDeA and the GDSTM"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## GDSTM Decorrelation on the multiple features Dataset
@@ -100,11 +102,7 @@ The **GDSTMDecorrelation** function returns a data frame with the following spec
 
 The output basis after transformation will be named after the original names:
 
--   The feature name will be unaltered, if their maximum correlation to other features was lower than the required threshold.
-
--   The feature name will have the "Ba\_" prefix, if the feature was correlated but used as unaltered basis
-
--   The feature name will have the "La\_" prefix, if the feature was decorrelated by the algorithm. These features are discovered latent variables
+-   The feature name will have the "La\_" prefix, if the feature was decorrelated by the algorithm. These features are the discovered latent variables
 
 
 #### The Unlatered Features
@@ -115,13 +113,6 @@ The output basis after transformation will be named after the original names:
 ## 3) features with not enough unique values.
 pander::pander(colnames(decorrelatedDF)[colnames(decorrelatedDF) %in% colnames(datasetframe_train)])
 
-```
-
-#### The Unaltered Basis
-```{r results = "asis"}
-## The unaltered features set 2. 
-## Continuous features that are correlated but left unaltered by the FDeA
-pander::pander(colnames(decorrelatedDF)[str_detect(colnames(decorrelatedDF),"Ba_")])
 ```
 
 #### The Latent Basis
@@ -225,7 +216,7 @@ Here are the heat maps of the correlation matrices before and after decorrelatio
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-featnames <- attr(decorrelatedDF,"varincluded")
+featnames <- rownames(attr(decorrelatedDF,"GDSTM"))
 cormat <- cor(datasetframe_test[,featnames],method="pearson")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",

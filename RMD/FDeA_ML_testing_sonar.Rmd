@@ -3,6 +3,8 @@ title: "FDeA and the GDSTM: Sonar Tests"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Filtered ML fit and the GDSTM with FRESA.CAD
@@ -332,6 +334,17 @@ cvNBPCA <- randomCV(dataCV,
                 pca = TRUE
             )
 
+cvNBCCA <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvNBRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=NAIVE_BAYES,
+                filtermethod=univariate_KS,
+                filtermethod.control=list(pvalue=0.01,limit= 0),
+                WHITE = "CCA",
+                pca = FALSE
+            )
+
 cvNBDecor <- randomCV(dataCV,
                 Outcome,
                 trainSampleSets= cvNBRaw$trainSamplesSets,
@@ -343,22 +356,35 @@ cvNBDecor <- randomCV(dataCV,
                 pca = FALSE
             )
 
+cvNBDecorC <- randomCV(dataCV,
+                Outcome,
+                trainSampleSets= cvNBRaw$trainSamplesSets,
+                fittingFunction= filteredFit,
+                fitmethod=NAIVE_BAYES,
+                filtermethod=univariate_KS,
+                filtermethod.control=list(pvalue=0.01,limit= 0),
+                DECOR = TRUE,
+                DECOR.control=list(Outcome=Outcome),
+                pca = FALSE
+            )
 
 
 ```
 
 The Aggregated Test Results
 
-```{r results = "asis", warning = FALSE, dpi=600, fig.height= 4.0, fig.width= 8.0}
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 8.0, fig.width= 8.0}
 
-par(mfrow=c(1,3))
-bpraw <- predictionStats_binary(cvNBRaw$testPredictions,"NB RAW",cex=0.75)
-bpPCA <- predictionStats_binary(cvNBPCA$testPredictions,"NB PCA",cex=0.75)
-bpdecor <- predictionStats_binary(cvNBDecor$testPredictions,"NB GDSTM",cex=0.75)
+par(mfrow=c(2,2))
+bpraw <- predictionStats_binary(cvNBRaw$testPredictions,"NB RAW",cex=0.70)
+bpPCA <- predictionStats_binary(cvNBPCA$testPredictions,"NB PCA",cex=0.70)
+bpdecor <- predictionStats_binary(cvNBDecor$testPredictions,"NB GDSTM",cex=0.70)
+bpdecorC <- predictionStats_binary(cvNBDecorC$testPredictions,"NB GDSTM Outcome Driven",cex=0.70)
 
 pander::pander(bpraw$aucs)
 pander::pander(bpPCA$aucs)
 pander::pander(bpdecor$aucs)
+pander::pander(bpdecorC$aucs)
 ```
 
 ## Using Feature Interactions.
@@ -475,6 +501,31 @@ mLASSODecor <- filteredFit(paste(Outcome,"~."),
                     family = "binomial"
                    )
 
+```
+
+Now we run filteredFit with the decorrelation set to true and default parameters and Outcome driven
+
+```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
+
+mNBDecorD <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=NAIVE_BAYES,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.01,limit= 0),
+                     DECOR = TRUE,
+                     DECOR.control=list(Outcome=Outcome),
+                     pca=FALSE
+                   )
+
+mLASSODecorD <- filteredFit(paste(Outcome,"~."),
+                   datasetframe_train,
+                    fitmethod=LASSO_MIN,
+                     filtermethod=univariate_KS,
+                     filtermethod.control=list(pvalue=0.20,limit= -1),
+                     DECOR = TRUE,
+                     DECOR.control=list(Outcome=Outcome),
+                    family = "binomial"
+                   )
 
 ```
 
@@ -519,6 +570,11 @@ prDecor <- predict(mNBDecor,datasetframe_test)
 # Predict the transformed dataset spearman
 prDecor2 <- predict(mNBDecor2,datasetframe_test)
 
+# Predict the transformed dataset
+prDecorD <- predict(mNBDecorD,datasetframe_test)
+
+
+
 par(mfrow=c(2,2))
 AllRocAUC <- NULL;
 
@@ -544,6 +600,11 @@ psDecor2 <- predictionStats_binary(cbind(classoutcomes,prDecor2),
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
+psDecorD <- predictionStats_binary(cbind(classoutcomes,prDecorD),
+                                "NB GDSTMD Spearman",cex=0.75)
+pander::pander(psDecorD$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecorD$aucs);
+
 
 psRaw <- predictionStats_binary(cbind(classoutcomes,
                                       predict(mLASSORaw,datasetframe_test)),
@@ -563,6 +624,11 @@ psDecor <- predictionStats_binary(cbind(classoutcomes,
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
+psDecorD <- predictionStats_binary(cbind(classoutcomes,
+                                        predict(mLASSODecorD,datasetframe_test)),
+                                "LASSO GDSTMD",cex=0.75)
+pander::pander(psDecorD$aucs)
+AllRocAUC <- rbind(AllRocAUC,psDecorD$aucs);
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,
                                          predict(mLASSODecor2,datasetframe_test)),
@@ -576,8 +642,8 @@ AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTM_S",
-                         "LASSO:Raw","LASSO:PCA","LASSO:GDSTM_P","LASSO:GDSTM_S")
+rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTMD_P","NB:GDSTM_S",
+                         "LASSO:Raw","LASSO:PCA","LASSO:GDSTM_P","LASSO:GDSTMD_P","LASSO:GDSTM_S")
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
                           metricname = "ROCAUC",

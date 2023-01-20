@@ -110,12 +110,12 @@ h <- hist(irisDecor$La_Sepal.Width,main="Unsup_FCA: Sepal Width")
 h <- hist(irisDecorOutcome$La_Sepal.Width,main="Sup_FCA: Sepal Width")
 
 h <- hist(iris$Petal.Length,main="Raw: Petal Length")
-h <- hist(irisDecor$Ba_Petal.Length,main="Unsup_FCA: Petal Length")
+h <- hist(irisDecor$Petal.Length,main="Unsup_FCA: Petal Length")
 h <- hist(irisDecorOutcome$La_Petal.Length,main="Sup_FCA: Petal Length")
 
 h <- hist(iris$Petal.Width,main="Raw: Petal Width")
 h <- hist(irisDecor$La_Petal.Width,main="Unsup_FCA: Petal Width")
-h <- hist(irisDecorOutcome$Ba_Petal.Width,main="Sup_FCA: Petal Width")
+h <- hist(irisDecorOutcome$Petal.Width,main="Sup_FCA: Petal Width")
 
 ## Box plots to compare the feature distributions among decorrelation schemes
 par(mfrow=c(2,2))
@@ -131,13 +131,13 @@ boxplot(cbind(Raw=iris$Sepal.Width,
 
 
 boxplot(cbind(Raw=iris$Petal.Length,
-              Unsup_FCA=irisDecor$Ba_Petal.Length,
+              Unsup_FCA=irisDecor$Petal.Length,
               Sup_FCA=irisDecorOutcome$La_Petal.Length),
         main="Petal Length")
 
 boxplot(cbind(Raw=iris$Petal.Width,
               Unsup_FCA=irisDecor$La_Petal.Width,
-              Sup_FCA=irisDecorOutcome$Ba_Petal.Width),
+              Sup_FCA=irisDecorOutcome$Petal.Width),
         main="Petal Width")
 
 ## Box plots by type of iris
@@ -164,7 +164,7 @@ boxplot(iris$Petal.Length~iris$Species,
         ylab="Petal Length",
         main="Raw: Petal Length")
 
-boxplot(irisDecor$Ba_Petal.Length~iris$Species,
+boxplot(irisDecor$Petal.Length~iris$Species,
         notch=TRUE,
         ylab="Petal Length",
         main="GDSTM: Petal Length")
@@ -199,7 +199,7 @@ boxplot(irisDecor$La_Petal.Width~iris$Species,
         ylab="De Petal Width",
         main="GDSTM: Petal Width")
 
-boxplot(irisDecorOutcome$Ba_Petal.Width~iris$Species,
+boxplot(irisDecorOutcome$Petal.Width~iris$Species,
         notch=TRUE,
         ylab="Petal Width",
         main="Outcome-Driven: Petal Width")
