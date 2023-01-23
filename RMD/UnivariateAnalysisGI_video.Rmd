@@ -122,8 +122,8 @@ topfiveOrg <- rownames(univar$orderframe[1:5,])
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
-DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
 
 
 
@@ -131,13 +131,13 @@ demat <- attr(DEdataframe,"GDSTM")
 
 pander::pander(c(Cols=ncol(demat),Rows=nrow(demat)))
 totFe <- ncol(DEdataframe)-1
-totBa <- sum(str_detect(colnames(DEdataframe),"Ba_"))
-totDe <- sum(str_detect(colnames(DEdataframe),"De_"))
+#totBa <- sum(str_detect(colnames(DEdataframe),"Ba_"))
+totDe <- sum(str_detect(colnames(DEdataframe),"La_"))
 toUnmat <- sum(apply(demat!=0,2,sum)==1)
 unaltered <- totFe - ncol(demat) + toUnmat
-pander::pander(c(Features=totFe,totBa=totBa,totDe=totDe,unaltered=totFe-totBa-totDe,totuna=unaltered))
-pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"De_"))/(ncol(DEdataframe)-1)))
-pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
+#pander::pander(c(Features=totFe,totBa=totBa,totDe=totDe,unaltered=totFe-totBa-totDe,totuna=unaltered))
+pander::pander(c(Decorrleated_Fraction=sum(str_detect(colnames(DEdataframe),"La_"))/(ncol(DEdataframe)-1)))
+#pander::pander(c(Base_Fraction=sum(str_detect(colnames(DEdataframe),"Ba_"))/(ncol(DEdataframe)-1)))
 
 pander::pander(c(Unaltered_Fraction=unaltered/totFe))
 pander::pander(c(sparcity=(totFe-ncol(demat)+sum(abs(demat)!=0))/totFe/totFe))
@@ -214,7 +214,7 @@ topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<pthr,])
 topDecorNames <- unique(c(topDecorNames,rownames(univarDe$orderframe[1:5,])))
 
 #topDecorNames <- rownames(univarDe$orderframe[univarDe$orderframe$FRes.p<1.0e-4,])
-dc <- getDerivedCoefficients(DEdataframe)
+dc <- getLatentCoefficients(DEdataframe)
 ### 2a Get only the ones that in the top features
 deNames_in_dc <- topDecorNames[topDecorNames %in% names(dc)]
 selectedlist <- dc[deNames_in_dc]
