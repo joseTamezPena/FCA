@@ -1,4 +1,4 @@
-# Heuristic Multidimensional Correlation Analysis: The Goal-Driven Spatial Transformation Matrices
+# Heuristic Multidimensional Correlation Analysis: Goal-Driven Spatial Transformation Matrices
 
 ![The GDSTM](images/paste-768E628A.png){width="311"}
 
