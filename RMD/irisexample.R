@@ -9,11 +9,24 @@ colors <- c("red","green","blue")
 names(colors) <- names(table(iris$Species))
 classcolor <- colors[iris$Species]
 
-##FCA Decorrelation at 0.25 threshold, pearson and fast estimation 
+## HMCA Decorrelation at 0.80 threshold, pearson and fast estimation 
+system.time(irisDecor <- GDSTMDecorrelation(iris))
+
+### Print the latent variables @0.8
+print(getLatentCoefficients(irisDecor));
+
+## HMCA Decorrelation at 0.5 threshold, pearson and fast estimation 
+system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.5))
+
+### Print the latent variables @0.5
+print(getLatentCoefficients(irisDecor));
+
+## HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
 system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25))
 
-### Print the latent variables
+### Print the latent variables @0.25
 print(getLatentCoefficients(irisDecor));
+
 
 GDSTM <- attr(irisDecor,"GDSTM")
 

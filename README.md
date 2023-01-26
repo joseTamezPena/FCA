@@ -45,7 +45,7 @@ install("FRESA.CAD")
 library("FRESA.CAD")
 data('iris')
 
-##HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
+## HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
 irisDecor <- GDSTMDecorrelation(iris,thr=0.25)
 
 ### Print the latent variables
