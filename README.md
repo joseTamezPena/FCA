@@ -16,7 +16,7 @@ Many multidimensional/multimodality data sets contain continuous features that a
 
 2.  The user can specify the maximum significant [correlation](https://en.wikipedia.org/wiki/Correlation_coefficient) coefficient among the returned variable set. i.e., None of the correlation pairs should have statistically significant correlation greater than the user specified goal.
 
-    -   i.e., if the correlation of the variables ($q_i,q_j$) is lower than the maximum correlation or if the correlation is not statistically significant, the algorithm does not try to remove the correlation among them.
+    -   i.e., if the correlation of the variables $(q_i,q_j)$ is lower than the maximum correlation or if the correlation is not statistically significant, the algorithm does not try to remove the correlation among them.
 
     -   The correlation measure can be user specified. i.e. [Pearson's $r$](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient), [Spearman's $ρ$](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient), or [Kendall's $τ$.](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient)
 
