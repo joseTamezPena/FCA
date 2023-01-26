@@ -18,7 +18,7 @@ Many multidimensional/multimodality data sets contain continuous features that a
 
     -   i.e., if the correlation of the variables $(q_i,q_j)$ is lower than the maximum correlation or if the correlation is not statistically significant, the algorithm does not try to remove the correlation among them.
 
-    -   The correlation measure can be user specified. i.e. [Pearson's](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) [$r$](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient), [Spearman's](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient) [$ρ$](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient), or [Kendall's](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) [$τ$](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient).
+    -   The correlation measure can be user specified. i.e. [Pearson's](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) [\$ r \$](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient), [Spearman's](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient) [\$ ρ \$](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient), or [Kendall's](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) [$τ$](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient).
 
 These requirements are addressed by an heuristic algorithm that creates a goal-driven spatial transformation matrix (GDSTM). Besides a correlation method, and a correlation goal, the algorithm requires a linear modeling function, hence users can specify linear fit, or robust fits. For Machine learning applications the user can specify a set of input features associated whit the target outcome.
 
