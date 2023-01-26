@@ -1,10 +1,12 @@
 # Heuristic Multidimensional Correlation Analysis: Goal-Driven Spatial Transformation Matrices
 
-![Fig1. Structure of the GDSTM](images/paste-768E628A.png)
+![](images/paste-706F2F78.png)
+
+Fig. 1. GDSTM created by the HMCA algorithm.
 
 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
-Many multidimensional/multimodality data sets contain continuous features that are co-linear, correlated or have some association between them. The goal of spatial transformations is to find a set of [latent variables](https://en.wikipedia.org/wiki/Latent_and_observable_variables) with minimum data correlation; hence downstream data analysis be simplified. Among common data transformation matrices are statistically driven approaches like: [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), [explanatory factor analysis](https://en.wikipedia.org/wiki/Exploratory_factor_analysis) (EFA), and [Canonical-correlation analysis](https://en.wikipedia.org/wiki/Canonical_correlation) (CCA). An heuristic alternative for these two statistical approaches is the heuristic-multidimensional correlation analysis (HMCA). The main advantage of the heuristic approach is that is driven by specific requirements for the generated output:
+Many multidimensional/multimodality data sets contain continuous features that are co-linear, correlated or have some association between them. The goal of spatial transformations is to find a set of [latent variables](https://en.wikipedia.org/wiki/Latent_and_observable_variables) with minimum data correlation; hence downstream data analysis be simplified. Common data transformation matrices include statistically driven approaches such as [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), [explanatory factor analysis](https://en.wikipedia.org/wiki/Exploratory_factor_analysis) (EFA), and [canonical-correlation analysis](https://en.wikipedia.org/wiki/Canonical_correlation) (CCA). An heuristic alternative for these two statistical approaches is the heuristic-multidimensional correlation analysis (HMCA). The main advantage of the heuristic approach is that it is driven by specific requirements for the output generated. The specific requirements are:
 
 1.  All output variables $Q=(q_1,...q_n)$ have a parent input variable $X=(x_1,...x_n)$ (See Fig 1.)
 
@@ -20,7 +22,7 @@ Many multidimensional/multimodality data sets contain continuous features that a
 
     -   The correlation measure can be user specified. i.e. [Pearson's](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) $r$, [Spearman's](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient) $ρ$ or [Kendall's](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) $τ$.
 
-These requirements are addressed by an heuristic algorithm that creates a goal-driven spatial transformation matrix (GDSTM). Besides a correlation method, and a correlation goal, the algorithm requires a linear modeling function, hence users can specify linear fit, or robust fits. For Machine learning applications the user can specify a set of input features associated whit the target outcome.
+These requirements are addressed by an heuristic algorithm that creates a goal-driven spatial transformation matrix (GDSTM). Besides a correlation method, and a correlation goal, the algorithm requires a linear modeling function, hence users can specify linear fit, or robust fits. For Machine learning applications the user can specify the target outcome.
 
 ## Software
 
