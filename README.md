@@ -1,12 +1,12 @@
 # Heuristic Multidimensional Correlation Analysis: Goal-Driven Spatial Transformation Matrices
 
-![The GDSTM](images/paste-768E628A.png){width="311"}
+![Fig1. Structure of the GDSTM](images/paste-768E628A.png)
 
 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
 Many multidimensional/multimodality data sets contain continuous features that are co-linear, correlated or have some association between them. The goal of spatial transformations is to find a set of [latent variables](https://en.wikipedia.org/wiki/Latent_and_observable_variables) with minimum data correlation; hence downstream data analysis be simplified. Among common data transformation matrices are statistically driven approaches like: [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), [explanatory factor analysis](https://en.wikipedia.org/wiki/Exploratory_factor_analysis) (EFA), and [Canonical-correlation analysis](https://en.wikipedia.org/wiki/Canonical_correlation) (CCA). An heuristic alternative for these two statistical approaches is the heuristic-multidimensional correlation analysis (HMCA). The main advantage of the heuristic approach is that is driven by specific requirements for the generated output:
 
-1.  All output variables $Q=(q_1,...q_n)$ have a parent input variable $X=(x_1,...x_n)$
+1.  All output variables $Q=(q_1,...q_n)$ have a parent input variable $X=(x_1,...x_n)$ (See Fig 1.)
 
     -   The [unit of measure](https://en.wikipedia.org/wiki/Unit_of_measurement) of the returned variable, $x_i$, must be the same as the parent, $y_i$, measurement unit. i.e., output variable and parent variable are [commensurable](https://en.wikipedia.org/wiki/Dimensional_analysis).
 
@@ -42,9 +42,10 @@ install("FRESA.CAD")
 ## Usage
 
 ```{r}
+library("FRESA.CAD")
 data('iris')
 
-##FCA Decorrelation at 0.25 threshold, pearson and fast estimation 
+##HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
 irisDecor <- GDSTMDecorrelation(iris,thr=0.25)
 
 ### Print the latent variables
@@ -76,9 +77,8 @@ This repository show some examples of the **FRESA.CAD::GDSTMDecorrelation(), FRE
     -   Here an example of the output
     -   ![](images/paste-8B4C5746.png)
 
-```{=html}
 <!-- -->
-```
+
 -   ![](images/paste-AF234B49.png)**ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
 
     -   output at: <https://rpubs.com/J_Tamez/GDSTMFeatureDiscovery>
