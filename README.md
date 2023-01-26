@@ -76,9 +76,10 @@ This repository show some examples of the **FRESA.CAD::GDSTMDecorrelation(), FRE
     -   Here an example of the output
     -   ![](images/paste-8B4C5746.png)
 
-![](images/paste-F24C6E81.png)
-
--   **ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
+```{=html}
+<!-- -->
+```
+-   ![](images/paste-AF234B49.png)**ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
 
     -   output at: <https://rpubs.com/J_Tamez/GDSTMFeatureDiscovery>
 
@@ -97,5 +98,3 @@ This repository show some examples of the **FRESA.CAD::GDSTMDecorrelation(), FRE
 -   **FDeA_ML_testing_ARCENE.Rmd** is an example of *filteredFit()* (Logistic **LASSO**) and with decorrelation on the Arcene dataset. (Due to the large dimensions of the ARCENE dataset the script will take several minutes to run)
 
     -   output at: <https://rpubs.com/J_Tamez/ARCENE_GDSTM>
-
--   
