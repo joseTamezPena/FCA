@@ -2,7 +2,7 @@
 
 ![](images/paste-706F2F78.png)
 
-Fig. 1. GDSTM created by the HMCA algorithm.
+Fig. 1. The weights ($w_j^i$) of the GDSTM matrix (**W**) are estimated by the HMCA algorithm.
 
 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
@@ -18,7 +18,7 @@ Many multidimensional/multimodality data sets contain continuous features that a
 
 2.  The user can specify the maximum significant [correlation](https://en.wikipedia.org/wiki/Correlation_coefficient) coefficient among the returned variable set. i.e., None of the correlation pairs should have statistically significant correlation greater than the user specified goal.
 
-    -   i.e., if the correlation of the variables $(q_i,q_j)$ is lower than the maximum correlation or if the correlation is not statistically significant, the algorithm does not try to remove the correlation among them.
+    -   i.e., if the correlation of the variables $(q_i,q_j)$ is lower than the maximum correlation or if the correlation is not statistically significant, the algorithm does not try to remove the correlation among these variables.
 
     -   The correlation measure can be user specified. i.e. [Pearson's](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) $r$, [Spearman's](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient) $ρ$ or [Kendall's](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) $τ$.
 
@@ -26,9 +26,9 @@ These requirements are addressed by an heuristic algorithm that creates a goal-d
 
 ## Software
 
-The HMCA algorithm is implemented in the FRESA.CAD package
+The HMCA algorithm is implemented in the FRESA.CAD R package
 
-### Installing from Source:
+### Installing the latest version:
 
 ```{r}
 library(devtools)
@@ -74,14 +74,14 @@ Sepal.Length  Sepal.Width Petal.Length  Petal.Width
 
 This repository show some examples of the **FRESA.CAD::GDSTMDecorrelation(), FRESA.CAD::getLatentCoefficients(decorrelatedobject)** and**FRESA.CAD::** **filteredFit()** functions.
 
--   **irisexample.R** showcase the effect of the FDeA algorithm on the iris data set.
+-   **irisexample.R** showcase the effect of the HMCA algorithm on the iris data set.
 
     -   Here an example of the output
     -   ![](images/paste-8B4C5746.png)
 
-<!-- -->
+-   ![](images/paste-AF234B49.png)
 
--   ![](images/paste-AF234B49.png)**ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
+-   **ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
 
     -   output at: <https://rpubs.com/J_Tamez/GDSTMFeatureDiscovery>
 
