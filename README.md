@@ -1,12 +1,12 @@
-# Heuristic Multidimensional Correlation Analysis: Goal-Driven Spatial Transformation Matrices
+# Iterative Decorrelation Analysis (IDeA) and the Unit of Measurement Preserving Spatial Transformation Matrices (UPSTM)
 
 ![](images/paste-706F2F78.png)
 
-Fig. 1. The weights ($w_j^i$) of the GDSTM matrix (**W**) are estimated by the HMCA algorithm.
+Fig. 1. The weights ($w_j^i$) of the UPSTM matrix (**W**) are estimated by the IDeA algorithm.
 
 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
-Many multidimensional/multimodality data sets contain continuous features that are co-linear, correlated or have some association between them. The goal of spatial transformations is to find a set of [latent variables](https://en.wikipedia.org/wiki/Latent_and_observable_variables) with minimum data correlation; hence downstream data analysis be simplified. Common data transformation matrices include statistically driven approaches such as [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), [explanatory factor analysis](https://en.wikipedia.org/wiki/Exploratory_factor_analysis) (EFA), and [canonical-correlation analysis](https://en.wikipedia.org/wiki/Canonical_correlation) (CCA). An heuristic alternative for these two statistical approaches is the heuristic-multidimensional correlation analysis (HMCA). The main advantage of the heuristic approach is that it is driven by specific requirements for the output generated. The specific requirements are:
+Many multidimensional/multimodality data sets contain continuous features that are co-linear, correlated or have some association between them. The goal of spatial transformations is to find a set of [latent variables](https://en.wikipedia.org/wiki/Latent_and_observable_variables) with minimum data correlation; hence downstream data analysis be simplified. Common data transformation matrices include statistically driven approaches such as [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), [explanatory factor analysis](https://en.wikipedia.org/wiki/Exploratory_factor_analysis) (EFA), and [canonical-correlation analysis](https://en.wikipedia.org/wiki/Canonical_correlation) (CCA). An algoritm alternative for these two statistical approaches is the Iterative Decorrelation Analysis (HMCA). The main advantage of the iterative approach is that it is driven by specific output requirements. The specific requirements are:
 
 1.  All output variables $Q=(q_1,...q_n)$ have a parent input variable $X=(x_1,...x_n)$ (See Fig 1.)
 
@@ -48,7 +48,7 @@ library("FRESA.CAD")
 data('iris')
 
 ## HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
-irisDecor <- GDSTMDecorrelation(iris,thr=0.25)
+irisDecor <- IDeA(iris,thr=0.25)
 
 ### Print the latent variables
 print(getLatentCoefficients(irisDecor))
@@ -77,9 +77,9 @@ This repository show some examples of the **FRESA.CAD::GDSTMDecorrelation(), FRE
 -   **irisexample.R** showcase the effect of the HMCA algorithm on the iris data set.
 
     -   Here an example of the output
-    -   ![](images/paste-8B4C5746.png)
+    -   ![](images/paste-AB4FBF9C.png)
 
--   ![](images/paste-AF234B49.png)
+-   ![](images/paste-913BE963.png)
 
 -   **ParkisonAnalysis_TrainTest.Rmd** is a demo shows the use of GDSTM and BSWiMS to gain insight of the features associated with a relevant outcome. Highlight process and functions that will aid authors to discern and statistically describe the relevant features associated with an specific outcome.
 

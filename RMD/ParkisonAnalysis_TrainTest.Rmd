@@ -21,9 +21,9 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 
 ```
 
-# Effect of GDSTM-Based Decorrelation on Feature Discovery
+# Effect of UPSTM-Based Decorrelation on Feature Discovery
 
-Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
+Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (UPSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
 
 1.  To improve model performance by uncovering the hidden information between correlated features.
 
@@ -31,7 +31,7 @@ Here I showcase of to use BSWiMS feature selection/modeling function coupled wit
 
 This demo will use:
 
--   *FRESA.CAD::GDSTMDecorrelation()*. For Decorrelation of Multidimensional data sets
+-   *FRESA.CAD::IDeA()*. For Decorrelation of Multidimensional data sets
 
     -   *FRESA.CAD::getLatentCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
 
@@ -181,15 +181,15 @@ pander::pander(table(testSet$class))
 
 #### Decorrelation: Training and Testing Sets Creation
 
-I compute a decorrelated version of the training and testing sets using the *GDSTMDecorrelation()* function of FRESA.CAD. The first decorrelation will be driven by features associated with the outcome. The second decorrelation will find the GDSTM without the outcome restriction.
+I compute a decorrelated version of the training and testing sets using the *IDeA()* function of FRESA.CAD. The first decorrelation will be driven by features associated with the outcome. The second decorrelation will find the UPSTM without the outcome restriction.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
-## The GDSTM transformation driven by the Outcome
-deTrain <- GDSTMDecorrelation(trainSet,Outcome="class",thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
+## The UPSTM transformation driven by the Outcome
+deTrain <- IDeA(trainSet,Outcome="class",thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
 deTest <- predictDecorrelate(deTrain,testSet)
 
-## The GDSTM transformation without outcome
-deTrainU <- GDSTMDecorrelation(trainSet,thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
+## The UPSTM transformation without outcome
+deTrainU <- IDeA(trainSet,thr=0.8,verbose = TRUE,skipRelaxed=FALSE)
 deTestU <- predictDecorrelate(deTrainU,testSet)
 
 ```
@@ -256,7 +256,7 @@ gplots::heatmap.2(abs(cormat),
                   scale = "none",
                   mar = c(10,10),
                   col=rev(heat.colors(5)),
-                  main = "Test Set Correlation after GDSTM",
+                  main = "Test Set Correlation after UPSTM",
                   cexRow = 0.35,
                   cexCol = 0.35,
                   key.title=NA,
@@ -299,7 +299,7 @@ cvBSWiMSDeCor <- randomCV(avgParkison,
                 DECOR.control=list(Outcome="class",thr=0.8,skipRelaxed=FALSE)
 )
 
-bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
+bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven UPSTM",cex=0.60)
 pander::pander(bpDecor$CM.analysis$tab)
 pander::pander(bpDecor$accc)
 pander::pander(bpDecor$aucs)
@@ -329,7 +329,7 @@ cvBSWiMSDeCorU <- randomCV(avgParkison,
                 DECOR.control=list(thr=0.8,skipRelaxed=FALSE)
 )
 
-bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"BSWiMS Data Driven GDSTM",cex=0.60)
+bpDecorU <- predictionStats_binary(cvBSWiMSDeCorU$medianTest,"BSWiMS Data Driven UPSTM",cex=0.60)
 pander::pander(bpDecorU$CM.analysis$tab)
 pander::pander(bpDecorU$accc)
 pander::pander(bpDecorU$aucs)

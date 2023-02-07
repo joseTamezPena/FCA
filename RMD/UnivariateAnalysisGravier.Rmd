@@ -115,13 +115,13 @@ pander::pander(prSurvTest$aucs)
 ## Decorrelation Analysis
 
 ```{r results = "asis"}
-DEdataframe <- GDSTMDecorrelation(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
-#DEdataframe <- GDSTMDecorrelation(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
+DEdataframe <- IDeA(dataframe,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- IDeA(dataframe,Outcome=outcome,thr=0.60,verbose = TRUE,skipRelaxed=FALSE)
+#DEdataframe <- IDeA(dataframe,Outcome=outcome,method="spearman",type="LM",thr=0.50,verbose = TRUE,skipRelaxed=FALSE)
 
 
 
-demat <- attr(DEdataframe,"GDSTM")
+demat <- attr(DEdataframe,"UPSTM")
 
 pander::pander(c(Cols=ncol(demat),Rows=nrow(demat)))
 totFe <- ncol(DEdataframe)-1
@@ -168,7 +168,7 @@ gplots::heatmap.2(abs(cormat),
 #                  scale = "none",
                   mar = c(5,5),
                   col=rev(heat.colors(5)),
-                  main = "Spearman Correlation: After GDSTM",
+                  main = "Spearman Correlation: After UPSTM",
                   cexRow = 0.35,
                   cexCol = 0.35,
                   key.title=NA,

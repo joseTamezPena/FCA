@@ -21,9 +21,9 @@ knitr::opts_chunk$set(collapse = TRUE, warning = FALSE, message = FALSE,comment 
 
 ```
 
-# Effect of GDSTM-Based Decorrelation on Feature Discovery
+# Effect of UPSTM-Based Decorrelation on Feature Discovery
 
-Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (GDSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
+Here I showcase of to use BSWiMS feature selection/modeling function coupled with Goal Driven Sparse Transformation Matrix (UPSTM) as a pre-processing step to decorrelate highly correlated features. The aim(s) are:
 
 1.  To improve model performance by uncovering the hidden information between correlated features.
 
@@ -31,7 +31,7 @@ Here I showcase of to use BSWiMS feature selection/modeling function coupled wit
 
 This demo will use:
 
--   *FRESA.CAD::GDSTMDecorrelation()*. For Decorrelation of Multidimensional data sets
+-   *FRESA.CAD::IDeA()*. For Decorrelation of Multidimensional data sets
 
     -   *FRESA.CAD::getDerivedCoefficients()*. For the extraction of the model of the newly discovered of decorrelated features.
 
@@ -159,10 +159,10 @@ gplots::heatmap.2(abs(cormat),
                   key.xlab="Spearman Correlation",
                   xlab="Feature", ylab="Feature")
 
-#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
-deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
-#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
-#deThermal <- GDSTMDecorrelation(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
+#deThermal <- IDeA(SalivaThermal_Avg,Outcome="class",thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+deThermal <- IDeA(SalivaThermal_Avg,thr=0.90,verbose = TRUE,skipRelaxed=FALSE,corRank=FALSE)
+#deThermal <- IDeA(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
+#deThermal <- IDeA(SalivaThermal_Avg,Outcome="class",thr=0.95,verbose = TRUE)
 
 cormat <- cor(deThermal[,colnames(deThermal) != "class"],method="spearman")
 cormat[is.na(cormat)] <- 0
@@ -171,7 +171,7 @@ gplots::heatmap.2(abs(cormat),
 #                  scale = "none",
                   mar = c(5,5),
                   col=rev(heat.colors(5)),
-                  main = "Correlation after GDSTM",
+                  main = "Correlation after UPSTM",
                   cexRow = 0.35,
                   cexCol = 0.35,
                   key.title=NA,
@@ -182,9 +182,9 @@ par(op)
 ```
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 3.5, fig.width= 5.0}
-GDSTM <- attr(deThermal,"GDSTM")
+UPSTM <- attr(deThermal,"UPSTM")
 
-gplots::heatmap.2(log(abs(GDSTM)+1),
+gplots::heatmap.2(log(abs(UPSTM)+1),
                   trace = "none",
 #                  scale = "none",
                   mar = c(5,5),
@@ -448,7 +448,7 @@ cvBSWiMSDeCor <- randomCV(SalivaThermal_Avg,
                 elimination.bootstrap.steps=0,
 )
 
-bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven GDSTM",cex=0.60)
+bpDecor <- predictionStats_binary(cvBSWiMSDeCor$medianTest,"BSWiMS Outcome-Driven UPSTM",cex=0.60)
 par(op)
 
 pander::pander(bpDecor$CM.analysis$tab)
@@ -512,7 +512,7 @@ sm <- summary(bagg$bagged.model)
 pander::pander(sm$coefficients)
 pander::pander(bagg$Jaccard.SM)
 
-bpDecor <- predictionStats_binary(cbind(deThermal$class,predict(bagg$bagged.model,deThermalS$scaledData)),"BSWiMS Outcome-Driven GDSTM",cex=0.90)
+bpDecor <- predictionStats_binary(cbind(deThermal$class,predict(bagg$bagged.model,deThermalS$scaledData)),"BSWiMS Outcome-Driven UPSTM",cex=0.90)
 par(op)
 
 fs <- bagg$frequencyTable

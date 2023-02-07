@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the GDSTM"
+title: "FDeA and the UPSTM"
 output:
   html_document:
     df_print: paged
@@ -9,7 +9,7 @@ editor_options:
 
 ## FDeA-Based Decorrelation on Vehicle
 
-This document describes the use of the **FRESA.CAD::GDSTMDecorrelation()** function that runs the feature Decorrelation analysis (**FDeA**) algorithm.
+This document describes the use of the **FRESA.CAD::IDeA()** function that runs the feature Decorrelation analysis (**FDeA**) algorithm.
 
 This demo uses FRESA.CAD and mlbench R packages:
 
@@ -86,14 +86,14 @@ Default Parameters: thr=0.80,method="fast",type="LM"
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-system.time(decorrelatedDF <- GDSTMDecorrelation(datasetframe_train))
+system.time(decorrelatedDF <- IDeA(datasetframe_train))
 
 
 
 ```
 ### Returned Data Frame Specifications
 
-The **GDSTMDecorrelation** function returns a data frame with the following specifications for the column names:
+The **UPSTMDecorrelation** function returns a data frame with the following specifications for the column names:
 
 The output basis after transformation will be named after the original names:
 
@@ -135,7 +135,7 @@ pander::pander(latentlist)
 
 Furthermore, the returned data frame will have the following main attributes:
 
-1)  Transformation matrix: "*GDSTM*"
+1)  Transformation matrix: "*UPSTM*"
 
 2)  Feature Analysis:
 
@@ -143,30 +143,30 @@ Furthermore, the returned data frame will have the following main attributes:
 
     2.  "*fsocre*"
 
-#### GDSTM
+#### UPSTM
 
-The "*GDSTM***"** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the user specified threshold
+The "*UPSTM***"** attribute stores the spatial transformation matrix. The matrix only includes continuous features that had some correlation greater than the user specified threshold
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
 ## The Spatial Transformation Matrix:
-GDSTM <- attr(decorrelatedDF,"GDSTM")
+UPSTM <- attr(decorrelatedDF,"UPSTM")
 
 ## The heatmap of the matrix
-gplots::heatmap.2(1*(abs(GDSTM) > 0),
+gplots::heatmap.2(1*(abs(UPSTM) > 0),
                   trace = "none",
                   mar = c(10,10),
                   col=rev(heat.colors(2)),
-                  main = paste("GDSTM Matrix:",studyName),
+                  main = paste("UPSTM Matrix:",studyName),
                   cexRow = 0.7,
                   cexCol = 0.7,
                   breaks = c(0,0.5,1),
                   key.title=NA,
                   key.xlab="|beta| > 0",
-                  xlab="GDSTM Feature", ylab="Input Feature")
+                  xlab="UPSTM Feature", ylab="Input Feature")
 
-pander::pander(t(colnames(GDSTM)),caption="New names of decorrelated matrix")
+pander::pander(t(colnames(UPSTM)),caption="New names of decorrelated matrix")
 
 
 ```
@@ -211,7 +211,7 @@ Here are the heat maps of the correlation matrices before and after decorrelatio
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
 
-featnames <- rownames(attr(decorrelatedDF,"GDSTM"))
+featnames <- rownames(attr(decorrelatedDF,"UPSTM"))
 cormat <- cor(datasetframe_test[,featnames],method="pearson")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -226,7 +226,7 @@ gplots::heatmap.2(abs(cormat),
                   xlab="Feature", ylab="Feature")
 
 
-featnames <- colnames(attr(decorrelatedDF,"GDSTM"))
+featnames <- colnames(attr(decorrelatedDF,"UPSTM"))
 cormat <- cor(decor_test[,featnames],method="pearson")
 gplots::heatmap.2(abs(cormat),
                   trace = "none",
@@ -245,7 +245,7 @@ gplots::heatmap.2(abs(cormat),
 
 ## FDeA with Options
 
-The following code are examples of running **GDSTMDecorrelation()** function with options:
+The following code are examples of running **IDeA()** function with options:
 
 ```{r, results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
@@ -260,14 +260,14 @@ decortype[[1]] <- "Default"
 # Change the maximum correlation goal
 
 decortype[[2]] <- "AtThr"
-system.time(datasetframeDecor[[2]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[2]] <- IDeA(
   datasetframe_train,
   thr = correlationThreshold
   ))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
 decortype[[3]] <- "RLM_Pearson"
-system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[3]] <- IDeA(
   datasetframe_train,
   type="RLM",
   method="pearson"))
@@ -275,14 +275,14 @@ system.time(datasetframeDecor[[3]] <- GDSTMDecorrelation(
 
 # Change the maximum correlation goal, and change to Spearman correlation
 decortype[[4]] <- "LM_Spearman"
-system.time(datasetframeDecor[[4]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[4]] <- IDeA(
   datasetframe_train,
   type="LM",
   method="spearman"))
 
 # Change the maximum correlation goal, and set Spearman correlation with robust liner model
 decortype[[5]] <- "RLM_Spearman"
-system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[5]] <- IDeA(
   datasetframe_train,
   type="RLM",
   method="spearman"))
@@ -292,21 +292,21 @@ system.time(datasetframeDecor[[5]] <- GDSTMDecorrelation(
 
 # Set the target class for association learning
 decortype[[6]] <- "Driven_Default"
-system.time(datasetframeDecor[[6]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[6]] <- IDeA(
   datasetframe_train,
   Outcome=Outcome))
 
 
 # Change the maximum correlation goal
 decortype[[7]] <- "Driven_AtThr"
-system.time(datasetframeDecor[[7]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[7]] <- IDeA(
   datasetframe_train,
   thr = correlationThreshold,
   Outcome=Outcome))
 
 # Change the maximum correlation goal, and set to Robust Liner Models
 decortype[[8]] <- "Driven_RLM_Pearson"
-system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[8]] <- IDeA(
   datasetframe_train,
   Outcome=Outcome,
   type="RLM",
@@ -314,7 +314,7 @@ system.time(datasetframeDecor[[8]] <- GDSTMDecorrelation(
 
 # Change the maximum correlation goal, and change to Spearman correlation
 decortype[[9]] <- "Driven_LM_Spearman"
-system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[9]] <- IDeA(
   datasetframe_train,
   Outcome=Outcome,
   type="LM",
@@ -322,7 +322,7 @@ system.time(datasetframeDecor[[9]] <- GDSTMDecorrelation(
 
 # Change the maximum correlation goal, and set to Spearman correlation with robust liner model
 decortype[[10]] <- "Driven_RLM_Spearman"
-system.time(datasetframeDecor[[10]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[10]] <- IDeA(
   datasetframe_train,
   Outcome=Outcome,
   type="RLM",
@@ -337,7 +337,7 @@ baseKS <- names(univariate_KS(datasetframe_train,
                         limit=0,
                         thr=correlationThreshold))
 
-system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
+system.time(datasetframeDecor[[11]] <- IDeA(
   datasetframe_train,
   Outcome=Outcome,
   baseFeatures=baseKS,
@@ -347,7 +347,7 @@ system.time(datasetframeDecor[[11]] <- GDSTMDecorrelation(
 
 ```
 
-## Machine Learning and GDSTM
+## Machine Learning and UPSTM
 
 Train a simple NB model on the raw data set
 
@@ -465,7 +465,7 @@ for (theClass in classNames)
                                 paste("PCA :",theClass),cex=0.75)
   pander::pander(psPCA$aucs)
   psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor[,theClass]),
-                                paste("GDSTM :",theClass),cex=0.75)
+                                paste("UPSTM :",theClass),cex=0.75)
   pander::pander(psDecor$aucs)
   meanROCAUC <- meanROCAUC + psRaw$aucs;
   meanPCAROCAUC <- meanPCAROCAUC + psPCA$aucs;

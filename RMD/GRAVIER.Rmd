@@ -126,7 +126,7 @@ par(op)
 ## Decorrelation Analysis
 
 ```{r}
-deGRAVIER <- GDSTMDecorrelation(gravierset,Outcome="V1",thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
+deGRAVIER <- IDeA(gravierset,Outcome="V1",thr=0.80,verbose = TRUE,skipRelaxed=FALSE)
 sum(str_detect(colnames(deGRAVIER),"De_"))
 sum(str_detect(colnames(deGRAVIER),"Ba_"))
 

@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the GDSTM: Sonar Tests"
+title: "FDeA and the UPSTM: Sonar Tests"
 output:
   html_document:
     df_print: paged
@@ -7,9 +7,9 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Filtered ML fit and the GDSTM with FRESA.CAD
+## Filtered ML fit and the UPSTM with FRESA.CAD
 
-Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without GDSTM.
+Here we make use of the **FRESA.CAD::filteredfit()** function to train ML models with and without UPSTM.
 
 Naive-Bayes (NB) and LASSO models are used in this demo.
 
@@ -214,13 +214,13 @@ pander::pander(psPCA$aucs)
 AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
 
 psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
-                                "NB GDSTM",cex=0.75)
+                                "NB UPSTM",cex=0.75)
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,prDecor2),
-                                "NB GDSTM Spearman",cex=0.75)
+                                "NB UPSTM Spearman",cex=0.75)
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
@@ -239,14 +239,14 @@ AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
 
 psDecor <- predictionStats_binary(cbind(classoutcomes,
                                         predict(mLASSODecor,datasetframe_test)),
-                                "LASSO GDSTM",cex=0.75)
+                                "LASSO UPSTM",cex=0.75)
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,
                                          predict(mLASSODecor2,datasetframe_test)),
-                                "LASSO GDSTM Spearman",cex=0.75)
+                                "LASSO UPSTM Spearman",cex=0.75)
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
@@ -256,8 +256,8 @@ AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTM_S",
-                         "LASSO:Raw","LASSO:PCA","LASSO:GDSTM_P","LASSO:GDSTM_S")
+rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:UPSTM_P","NB:UPSTM_S",
+                         "LASSO:Raw","LASSO:PCA","LASSO:UPSTM_P","LASSO:UPSTM_S")
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
                           metricname = "ROCAUC",
@@ -273,33 +273,33 @@ bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
 
 ```
 
-## Visualization of GDSTM
+## Visualization of UPSTM
 
-The GDSTM is stored in the filteredFit() object. Hence, we can analyze and display the matrix.
+The UPSTM is stored in the filteredFit() object. Hence, we can analyze and display the matrix.
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-gplots::heatmap.2(mNBDecor$GDSTM,
+gplots::heatmap.2(mNBDecor$UPSTM,
                   trace = "none",
                   mar = c(10,10),
                   col=rev(heat.colors(7)),
-                  main = paste("GDSTM Matrix (Pearson, LM):",studyName),
+                  main = paste("UPSTM Matrix (Pearson, LM):",studyName),
                   cexRow = 0.7,
                   cexCol = 0.7,
                   key.title=NA,
                   key.xlab="beta",
-                  xlab="GDSTM Feature", ylab="Input Feature")
+                  xlab="UPSTM Feature", ylab="Input Feature")
 
-gplots::heatmap.2(mNBDecor2$GDSTM,
+gplots::heatmap.2(mNBDecor2$UPSTM,
                   trace = "none",
                   mar = c(10,10),
                   col=rev(heat.colors(7)),
-                  main = paste("GDSTM Matrix (Spearman, RLM):",studyName),
+                  main = paste("UPSTM Matrix (Spearman, RLM):",studyName),
                   cexRow = 0.7,
                   cexCol = 0.7,
                   key.title=NA,
                   key.xlab="beta",
-                  xlab="GDSTM Feature", ylab="Input Feature")
+                  xlab="UPSTM Feature", ylab="Input Feature")
 ```
 
 ## Repeated Holdout Cross-Validation
@@ -378,8 +378,8 @@ The Aggregated Test Results
 par(mfrow=c(2,2))
 bpraw <- predictionStats_binary(cvNBRaw$testPredictions,"NB RAW",cex=0.70)
 bpPCA <- predictionStats_binary(cvNBPCA$testPredictions,"NB PCA",cex=0.70)
-bpdecor <- predictionStats_binary(cvNBDecor$testPredictions,"NB GDSTM",cex=0.70)
-bpdecorC <- predictionStats_binary(cvNBDecorC$testPredictions,"NB GDSTM Outcome Driven",cex=0.70)
+bpdecor <- predictionStats_binary(cvNBDecor$testPredictions,"NB UPSTM",cex=0.70)
+bpdecorC <- predictionStats_binary(cvNBDecorC$testPredictions,"NB UPSTM Outcome Driven",cex=0.70)
 
 pander::pander(bpraw$aucs)
 pander::pander(bpPCA$aucs)
@@ -590,18 +590,18 @@ pander::pander(psPCA$aucs)
 AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
 
 psDecor <- predictionStats_binary(cbind(classoutcomes,prDecor),
-                                "NB GDSTM",cex=0.75)
+                                "NB UPSTM",cex=0.75)
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,prDecor2),
-                                "NB GDSTM Spearman",cex=0.75)
+                                "NB UPSTM Spearman",cex=0.75)
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
 psDecorD <- predictionStats_binary(cbind(classoutcomes,prDecorD),
-                                "NB GDSTMD Spearman",cex=0.75)
+                                "NB UPSTMD Spearman",cex=0.75)
 pander::pander(psDecorD$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecorD$aucs);
 
@@ -620,19 +620,19 @@ AllRocAUC <- rbind(AllRocAUC,psPCA$aucs)
 
 psDecor <- predictionStats_binary(cbind(classoutcomes,
                                         predict(mLASSODecor,datasetframe_test)),
-                                "LASSO GDSTM",cex=0.75)
+                                "LASSO UPSTM",cex=0.75)
 pander::pander(psDecor$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor$aucs);
 
 psDecorD <- predictionStats_binary(cbind(classoutcomes,
                                         predict(mLASSODecorD,datasetframe_test)),
-                                "LASSO GDSTMD",cex=0.75)
+                                "LASSO UPSTMD",cex=0.75)
 pander::pander(psDecorD$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecorD$aucs);
 
 psDecor2 <- predictionStats_binary(cbind(classoutcomes,
                                          predict(mLASSODecor2,datasetframe_test)),
-                                "LASSO GDSTM Spearman",cex=0.75)
+                                "LASSO UPSTM Spearman",cex=0.75)
 pander::pander(psDecor2$aucs)
 AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
@@ -642,8 +642,8 @@ AllRocAUC <- rbind(AllRocAUC,psDecor2$aucs);
 
 ```{r results = "asis", warning = FALSE, dpi=600, fig.height= 6.0, fig.width= 8.0}
 
-rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:GDSTM_P","NB:GDSTMD_P","NB:GDSTM_S",
-                         "LASSO:Raw","LASSO:PCA","LASSO:GDSTM_P","LASSO:GDSTMD_P","LASSO:GDSTM_S")
+rownames(AllRocAUC) <- c("NB:Raw","NB:PCA","NB:UPSTM_P","NB:UPSTMD_P","NB:UPSTM_S",
+                         "LASSO:Raw","LASSO:PCA","LASSO:UPSTM_P","LASSO:UPSTMD_P","LASSO:UPSTM_S")
 pander::pander(AllRocAUC)
 bpROCAUC <- barPlotCiError(as.matrix(AllRocAUC),
                           metricname = "ROCAUC",

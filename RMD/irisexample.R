@@ -1,7 +1,7 @@
 
 library("FRESA.CAD")
 
-pdf(file = "GDSTMDecorrelation.IRIS.Example.pdf",width = 8, height = 6)
+pdf(file = "UPSTMDecorrelation.IRIS.Example.pdf",width = 8, height = 6)
 
 data('iris')
 
@@ -9,37 +9,37 @@ colors <- c("red","green","blue")
 names(colors) <- names(table(iris$Species))
 classcolor <- colors[iris$Species]
 
-## HMCA Decorrelation at 0.80 threshold, pearson and fast estimation 
-system.time(irisDecor <- GDSTMDecorrelation(iris))
+## IDeA Decorrelation at 0.80 threshold, pearson and fast estimation 
+system.time(irisDecor <- IDeA(iris))
 
 ### Print the latent variables @0.8
 print(getLatentCoefficients(irisDecor));
 
-## HMCA Decorrelation at 0.5 threshold, pearson and fast estimation 
-system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.5))
+## IDeA Decorrelation at 0.5 threshold, pearson and fast estimation 
+system.time(irisDecor <- IDeA(iris,thr=0.5))
 
 ### Print the latent variables @0.5
 print(getLatentCoefficients(irisDecor));
 
-## HMCA Decorrelation at 0.25 threshold, pearson and fast estimation 
-system.time(irisDecor <- GDSTMDecorrelation(iris,thr=0.25))
+## IDeA Decorrelation at 0.25 threshold, pearson and fast estimation 
+system.time(irisDecor <- IDeA(iris,thr=0.25))
 
 ### Print the latent variables @0.25
 print(getLatentCoefficients(irisDecor));
 
 
-GDSTM <- attr(irisDecor,"GDSTM")
+UPSTM <- attr(irisDecor,"UPSTM")
 
-print(GDSTM)
+print(UPSTM)
 
 ## The heat map of the generated decorrelation matrix
-gplots::heatmap.2(GDSTM,
+gplots::heatmap.2(UPSTM,
                   trace = "none",
                   scale = "none",
                   dendrogram = "none",
                   mar = c(7,7),
                   col=rev(heat.colors(21)),
-                  main = paste("GDSTM Matrix"),
+                  main = paste("UPSTM Matrix"),
                   cexRow = 0.75,
                   cexCol = 0.75,
                   key.title=NA,
@@ -50,23 +50,23 @@ gplots::heatmap.2(GDSTM,
 
 ## Estimating a new decorrelation matrix using supervised basis. ie. Keep unaltered features associated with outcome
 
-system.time(irisDecorOutcome <- GDSTMDecorrelation(iris,Outcome="Species",thr=0.25))
+system.time(irisDecorOutcome <- IDeA(iris,Outcome="Species",thr=0.25))
 
 ### Print the latent variables
 print(getLatentCoefficients(irisDecorOutcome));
 
-GDSTM <- attr(irisDecorOutcome,"GDSTM")
-print(GDSTM)
+UPSTM <- attr(irisDecorOutcome,"UPSTM")
+print(UPSTM)
 
 
 ## Heat map of The Decorrelation matrix
-gplots::heatmap.2(GDSTM,
+gplots::heatmap.2(UPSTM,
                   trace = "none",
                   scale = "none",
                   dendrogram = "none",
                   mar = c(7,7),
                   col=rev(heat.colors(21)),
-                  main = paste("Outcome-Driven GDSTM"),
+                  main = paste("Outcome-Driven UPSTM"),
                   cexRow = 0.75,
                   cexCol = 0.75,
                   key.title=NA,
@@ -106,51 +106,51 @@ plot(iris[,features],col=classcolor,main="Raw IRIS")
 plot(as.data.frame(irisPCA$x),col=classcolor,main="PCA IRIS")
 
 featuresDecor <- colnames(irisDecor[,sapply(irisDecor,is,"numeric")])
-plot(irisDecor[,featuresDecor],col=classcolor,main="HMCA IRIS")
+plot(irisDecor[,featuresDecor],col=classcolor,main="IDeA IRIS")
 
 
 featuresDecor <- colnames(irisDecorOutcome[,sapply(irisDecorOutcome,is,"numeric")])
-plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Outcome-Driven HMCA IRIS")
+plot(irisDecorOutcome[,featuresDecor],col=classcolor,main="Outcome-Driven IDeA IRIS")
 
 ## Plotting the histograms of the features
 par(mfrow=c(2,3))
 h <- hist(iris$Sepal.Length,main="Raw: Sepal Lenght")
-h <- hist(irisDecor$La_Sepal.Length,main="Blind_HMCA: Sepal Lenght")
-h <- hist(irisDecorOutcome$La_Sepal.Length,main="Driven_HMCA: Sepal Lenght")
+h <- hist(irisDecor$La_Sepal.Length,main="Blind_IDeA: Sepal Lenght")
+h <- hist(irisDecorOutcome$La_Sepal.Length,main="Driven_IDeA: Sepal Lenght")
 
 h <- hist(iris$Sepal.Width,main="Raw: Sepal Width")
-h <- hist(irisDecor$La_Sepal.Width,main="Blind_HMCA: Sepal Width")
-h <- hist(irisDecorOutcome$La_Sepal.Width,main="Driven_HMCA: Sepal Width")
+h <- hist(irisDecor$La_Sepal.Width,main="Blind_IDeA: Sepal Width")
+h <- hist(irisDecorOutcome$La_Sepal.Width,main="Driven_IDeA: Sepal Width")
 
 h <- hist(iris$Petal.Length,main="Raw: Petal Length")
-h <- hist(irisDecor$Petal.Length,main="Blind_HMCA: Petal Length")
-h <- hist(irisDecorOutcome$La_Petal.Length,main="Driven_HMCA: Petal Length")
+h <- hist(irisDecor$Petal.Length,main="Blind_IDeA: Petal Length")
+h <- hist(irisDecorOutcome$La_Petal.Length,main="Driven_IDeA: Petal Length")
 
 h <- hist(iris$Petal.Width,main="Raw: Petal Width")
-h <- hist(irisDecor$La_Petal.Width,main="Blind_HMCA: Petal Width")
-h <- hist(irisDecorOutcome$Petal.Width,main="Driven_HMCA: Petal Width")
+h <- hist(irisDecor$La_Petal.Width,main="Blind_IDeA: Petal Width")
+h <- hist(irisDecorOutcome$Petal.Width,main="Driven_IDeA: Petal Width")
 
 ## Box plots to compare the feature distributions among decorrelation schemes
 par(mfrow=c(2,2))
 boxplot(cbind(Raw=iris$Sepal.Length,
-              Blind_HMCA=irisDecor$La_Sepal.Length,
-              Dri_HMCA=irisDecorOutcome$La_Sepal.Length),
+              Blind_IDeA=irisDecor$La_Sepal.Length,
+              Dri_IDeA=irisDecorOutcome$La_Sepal.Length),
        main="Sepal Length")
 
 boxplot(cbind(Raw=iris$Sepal.Width,
-              Blind_HMCA=irisDecor$La_Sepal.Width,
-              Dri_HMCA=irisDecorOutcome$La_Sepal.Width),
+              Blind_IDeA=irisDecor$La_Sepal.Width,
+              Dri_IDeA=irisDecorOutcome$La_Sepal.Width),
         main="Sepal Width")
 
 
 boxplot(cbind(Raw=iris$Petal.Length,
-              Blind_HMCA=irisDecor$Petal.Length,
-              Dri_HMCA=irisDecorOutcome$La_Petal.Length),
+              Blind_IDeA=irisDecor$Petal.Length,
+              Dri_IDeA=irisDecorOutcome$La_Petal.Length),
         main="Petal Length")
 
 boxplot(cbind(Raw=iris$Petal.Width,
-              Blind_HMCA=irisDecor$La_Petal.Width,
-              Dri_HMCA=irisDecorOutcome$Petal.Width),
+              Blind_IDeA=irisDecor$La_Petal.Width,
+              Dri_IDeA=irisDecorOutcome$Petal.Width),
         main="Petal Width")
 
 ## Box plots by type of iris
@@ -180,7 +180,7 @@ boxplot(iris$Petal.Length~iris$Species,
 boxplot(irisDecor$Petal.Length~iris$Species,
         notch=TRUE,
         ylab="Petal Length",
-        main="HMCA Petal Length")
+        main="IDeA Petal Length")
 
 boxplot(irisDecorOutcome$La_Petal.Length~iris$Species,
         notch=TRUE,
@@ -195,7 +195,7 @@ boxplot(iris$Sepal.Width~iris$Species,
 boxplot(irisDecor$La_Sepal.Width~iris$Species,
         notch=TRUE,
         ylab="De Sepal Width",
-        main="HMCA: Sepal Width")
+        main="IDeA: Sepal Width")
 
 boxplot(irisDecorOutcome$La_Sepal.Width~iris$Species,
         notch=TRUE,
@@ -210,7 +210,7 @@ boxplot(iris$Petal.Width~iris$Species,
 boxplot(irisDecor$La_Petal.Width~iris$Species,
         notch=TRUE,
         ylab="De Petal Width",
-        main="HMCA: Petal Width")
+        main="IDeA: Petal Width")
 
 boxplot(irisDecorOutcome$Petal.Width~iris$Species,
         notch=TRUE,

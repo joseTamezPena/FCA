@@ -385,7 +385,7 @@ NormalData$RAVLT_forgetting <- NULL
 NormalData$FAQ <- NULL
 
 
-TADPOLE_DX_NLD <- GDSTMDecorrelation(NormalData,Outcome="DX",
+TADPOLE_DX_NLD <- IDeA(NormalData,Outcome="DX",
                                         thr=0.8,
                                         verbose = TRUE,
                                      skipRelaxed=FALSE)
@@ -396,10 +396,10 @@ TADPOLE_DX_NLD <- GDSTMDecorrelation(NormalData,Outcome="DX",
 TADPOLECrossMRID <- predictDecorrelate(TADPOLE_DX_NLD,TADPOLECrossMRI)
 #TADPOLECrossMRID$De_M_ST24TA
 
-#DeCorrmatrix <- attr(TADPOLE_DX_NLD,"GDSTM")
+#DeCorrmatrix <- attr(TADPOLE_DX_NLD,"UPSTM")
 #banames <- colnames(DeCorrmatrix)[apply(DeCorrmatrix!=0,2,sum)==1]
 
-#dmat <- as.data.frame(attr(TADPOLE_DX_NLD,"GDSTM"))
+#dmat <- as.data.frame(attr(TADPOLE_DX_NLD,"UPSTM"))
 #sum(dmat$De_M_ST24TA!=0)
 #sum(dmat$De_M_ST13TA!=0)
 #sum(dmat["M_ST24TA",]!=0)
