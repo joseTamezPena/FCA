@@ -1,5 +1,5 @@
 ---
-title: 'Filtered Fit: FDeA and the UPSTM'
+title: 'Filtered Fit: IDeA and the UPSTM'
 output:
   html_document:
     df_print: paged

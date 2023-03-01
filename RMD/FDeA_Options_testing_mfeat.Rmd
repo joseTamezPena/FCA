@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the UPSTM"
+title: "IDeA and the UPSTM"
 output:
   html_document:
     df_print: paged
@@ -9,7 +9,7 @@ editor_options:
 
 ## UPSTM Decorrelation on the multiple features Dataset
 
-This document describes the use of the **FRESA.CAD::IDeA()** function that runs the feature correlation analysis (**FDeA**) algorithm on the mfeat data set:
+This document describes the use of the **FRESA.CAD::IDeA()** function that runs the feature correlation analysis (**IDeA**) algorithm on the mfeat data set:
 
 > <https://archive.ics.uci.edu/ml/datasets/Multiple+Features>
 >
@@ -82,7 +82,7 @@ pander::pander(table(datasetframe_test[,Outcome]),caption="Testing")
 
 ```
 
-## FDeA with Default Parameters
+## IDeA with Default Parameters
 
 The default parameters will compute the transformation matrix with a maximum correlation goal of 0.8 using fast matrix multiplication with Pearson correlation and linear models estimation.
 
@@ -98,7 +98,7 @@ system.time(decorrelatedDF <- IDeA(datasetframe_train))
 ```
 ### Returned Data Frame Specifications
 
-The **UPSTMDecorrelation** function returns a data frame with the following specifications for the column names:
+The **IDeA** function returns a data frame with the following specifications for the column names:
 
 The output basis after transformation will be named after the original names:
 
@@ -117,7 +117,7 @@ pander::pander(colnames(decorrelatedDF)[colnames(decorrelatedDF) %in% colnames(d
 
 #### The Latent Basis
 ```{r results = "asis"}
-## The discovered latent features. i.e. Decorrelated by the FDeA
+## The discovered latent features. i.e. Decorrelated by the IDeA
 pander::pander(colnames(decorrelatedDF)[str_detect(colnames(decorrelatedDF),"La_")])
                                         
                                         
@@ -175,9 +175,9 @@ pander::pander(t(colnames(UPSTM)),caption="New names of decorrelated matrix")
 
 #### The Feature Index Score
 
-The **FDeA** analysis of the data features are stored in three attributes: "*TotalAdjustments*", and "*fscore*".
+The **IDeA** analysis of the data features are stored in three attributes: "*TotalAdjustments*", and "*fscore*".
 
--   "*TotalAdjustments*" returns named vector of with the number of times a variable was decorrelated by the FDeA.
+-   "*TotalAdjustments*" returns named vector of with the number of times a variable was decorrelated by the IDeA.
 
 -   "*fscore*" : returns a named vector with the total feature score, $F_j$, of the analyzed features. The score is equal to number of times the features was uses as independent feature minus the "*TotalAdjustments*".
 
@@ -249,7 +249,7 @@ gplots::heatmap.2(abs(cormat),
 
 ```
 
-## FDeA with Options
+## IDeA with Options
 
 The following code are examples of running **IDeA()** function with options:
 

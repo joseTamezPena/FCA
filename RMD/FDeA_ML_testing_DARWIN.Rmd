@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the UPSTM: DARWIN Data Set"
+title: "IDeA and the UPSTM: DARWIN Data Set"
 output:
   html_document:
     df_print: paged

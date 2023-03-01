@@ -1,5 +1,5 @@
 ---
-title: "FDeA and the UPSTM: Sonar Tests"
+title: "IDeA and the UPSTM: Sonar Tests"
 output:
   html_document:
     df_print: paged
